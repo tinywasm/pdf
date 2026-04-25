@@ -1296,7 +1296,7 @@ func Test_SVGBasicWrite(t *testing.T) {
 		`web control is supported and is used in this example.`
 	html := pdf.HTMLBasicNew()
 	html.Write(lineHt, htmlStr)
-	sig, err = fpdf.SVGBasicFileParse(ImageFile(sigFileStr))
+	sig, err = pdf.SVGBasicFileParse(ImageFile(sigFileStr))
 	if err == nil {
 		scale := 100 / sig.Wd
 		scaleY := 30 / sig.Ht
@@ -1345,7 +1345,7 @@ func Test_SVGBasicDraw(t *testing.T) {
 		`size is used. scale 1.0 is pt`
 	html := pdf.HTMLBasicNew()
 	html.Write(lineHt, htmlStr)
-	sig, err = fpdf.SVGBasicFileParse(ImageFile(sigFileStr))
+	sig, err = pdf.SVGBasicFileParse(ImageFile(sigFileStr))
 	if err == nil {
 		pdf.SetLineCapStyle("round")
 		pdf.SetLineWidth(0.15)
@@ -2696,7 +2696,7 @@ func Test_SetModificationDate(t *testing.T) {
 	// ModDate:        Sun Jan  2 10:22:30 2000
 	pdf := NewDocPdfTest()
 	pdf.AddPage()
-	pdf.SetModificationDate(time.Date(2000, 1, 2, 10, 22, 30, 0, time.UTC))
+	pdf.SetModificationDate(time.Date(2000, 1, 2, 10, 22, 30, 0, time.UTC).UnixNano())
 	fileStr := Filename("Test_SetModificationDate")
 	err := pdf.OutputFileAndClose(fileStr)
 	SummaryCompare(err, fileStr)
