@@ -675,7 +675,7 @@ func (f *fontDefType) Schema() []fmt.Field {
 		{Name: "Desc", Type: fmt.FieldStruct},
 		{Name: "Up", Type: fmt.FieldInt},
 		{Name: "Ut", Type: fmt.FieldInt},
-		{Name: "Cw", Type: fmt.FieldInt},
+		{Name: "Cw", Type: fmt.FieldIntSlice},
 		{Name: "Enc", Type: fmt.FieldText},
 		{Name: "Diff", Type: fmt.FieldText},
 		{Name: "File", Type: fmt.FieldText},

@@ -52,8 +52,8 @@ func NewDocPdfTest(options ...any) *fpdf.Fpdf {
 	pdf := fpdf.New(options...)
 	pdf.SetCompression(false)
 	pdf.SetCatalogSort(true)
-	pdf.SetCreationDate(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	pdf.SetModificationDate(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	pdf.SetCreationDate(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC).UnixNano())
+	pdf.SetModificationDate(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC).UnixNano())
 
 	return pdf
 }

@@ -1,270 +1,193 @@
-# PLAN: Reduce WASM binary — Remaining optimizations
+# Plan: Professional Layout API
 
-## Current Status: 423.5 KB (post-optimization, down from 738 KB — 43% reduction)
+## Restricciones de la librería
 
-## Remaining target: ~390-400 KB (this round) → ~150 KB requires Round 2 (Stage 8 candidates)
-
----
-
-## Post-execution twiggy analysis
-
-| Dependency | Before | After | Status |
-|---|---|---|---|
-| encoding/json | 91 KB | 0 KB | Eliminated |
-| time stdlib | 75 KB | ~1 KB | Eliminated |
-| image/gif | 12 KB | 0 KB | Eliminated |
-| compress/* | 38 KB | ~0.1 KB | Eliminated |
-| stdlib fmt | 45 KB | 0 KB | Eliminated |
-| crypto/* | 30 KB | **25 KB** | **Partial — attachments.go still imports crypto/md5** |
-| runtime | 61 KB | 61 KB | Irreducible |
+- **Binario mínimo**: no introducir imports de stdlib que no existan ya. Usar `github.com/tinywasm/fmt` con dot-import (`. "github.com/tinywasm/fmt"`) — las funciones se usan sin prefijo: `LastIndex`, `Convert`, `Sprintf`, `Errf`.
+- **TinyGo compatible**: no usar `map`. En su lugar usar `[]KeyValue` (tipo de `tinywasm/fmt`, disponible sin prefijo por dot-import).
+- **Sin lógica de negocio**: la librería no conoce consumidores ni templates específicos.
+- **Sin dependencias nuevas**: todo debe implementarse sobre la API existente de `fpdf`.
 
 ---
 
-## STAGES
+## Análisis de lo existente antes de proponer
 
-### Stage 1: Eliminate crypto/md5 from attachments.go — Savings ~25 KB
-**Risk**: low | **Complexity**: low
+| Funcionalidad | Ya existe | Ubicación |
+|---|---|---|
+| Footer con texto + página | Parcial | `SetPageFooter()` → solo center + pageTotal |
+| Header por página | Sí | `SetPageHeader()` → left + right text |
+| Línea horizontal | Sí (fpdf) | `fpdf.Line(x1,y1,x2,y2)` + `SetDrawColor` + `SetLineWidth` |
+| Rectángulo relleno | Sí (fpdf) | `fpdf.Rect(x,y,w,h,"F")` + `SetFillColor` |
+| Color de texto | Sí (fpdf) | `fpdf.SetTextColor` — expuesto en doc como `SetTextColor` ✅ |
+| Posición absoluta | Sí (fpdf) | `fpdf.SetXY` — expuesto como `SetPosition` ✅ |
+| Imagen en posición | Sí (fpdf) | `fpdf.Image` — expuesto como `DrawImageAt` ✅ |
+| Total de páginas `{nb}` | Sí (fpdf) | `AliasNbPages("")` + `{nb}` en texto |
 
-**Context**: `fpdf/attachments.go` imports `crypto/md5` for the `checksum()` function (line 32-35).
-This is used in `writeCompressedFileObject()` to embed the MD5 checksum of attachment content.
-Attachments are NOT part of the WASM functional scope (generate-only, no embedded files needed in browser).
+**Conclusión**: footer, línea con color y rect relleno son wrappers mínimos sobre fpdf, no código nuevo. No justifican imports adicionales.
 
-**Current code** (`fpdf/attachments.go:32-35`):
+---
+
+## Cambios propuestos
+
+### 1. `SetPageFooter` — agregar left+right (texto + página)
+
+El `PageFooter` actual solo tiene `centerText` y `pageTotal`. Agregar:
+
 ```go
-func checksum(data []byte) string {
-    sl := md5.Sum(data)
-    return hex.EncodeToString(sl[:])
+func (pf *PageFooter) WithLeftRight(leftText string) *PageFooter
+```
+
+- Izquierda: `leftText` en gris (130,130,130), fuente 8pt itálica
+- Derecha: `Sprintf("Página %s/{nb}", Convert(pageNo).String())` — sin stdlib
+- Reset color a negro al salir
+- Llama `AliasNbPages("")` internamente
+- **Conflicto con `SetCenterText`**: `WithLeftRight` y `SetCenterText` son mutuamente excluyentes. `WithLeftRight` ignora `centerText`. El `SetFooterFunc` se registra una vez; si se llaman ambos, el último registrado gana — documentar esto.
+
+**Justificación**: reutiliza `SetFooterFunc` ya existente. Cero código nuevo en fpdf.
+
+---
+
+### 2. `AddHeader1/2/3` — respetar color activo, reset al salir
+
+Actualmente no resetean el color de texto, lo que causa que el color seteado antes persista después del header. Fix mínimo: agregar `SetTextColor(0,0,0)` al final de cada AddHeader.
+
+```go
+func (d *Document) AddHeader2(text string) *Document {
+    d.internal.SetFont(d.fontFamily, "B", 12)  // ver punto 4
+    d.internal.CellFormat(0, 7, text, "", 1, "L", false, 0, "")
+    d.internal.SetTextColor(0, 0, 0) // reset explícito
+    d.internal.Ln(2)
+    return d
 }
 ```
 
-**What to do**:
-1. Add `//go:build !wasm` to `fpdf/attachments.go`
-2. Create `fpdf/attachments_wasm.go` (`//go:build wasm`) with:
-   - The `Attachment` struct definition (needed for compilation)
-   - Stub functions that set `f.err` with "attachments not supported in WASM"
-   - The `annotationAttach` struct and `pageAttachments` type if referenced elsewhere
-
-**Important**: before adding build tags, verify what symbols from `attachments.go` are referenced in other files that compile for WASM:
-```bash
-grep -rn "Attachment\|attachments\|pageAttachments\|annotationAttach\|putAttachments\|getEmbeddedFiles\|putAnnotationsAttachments\|putAttachmentAnnotationLinks\|AddAttachmentAnnotation\|SetAttachments" fpdf/*.go | grep -v _test.go | grep -v attachments.go
+**Flujo recomendado para el consumidor:**
+```go
+doc.SetTextColor(30, 60, 120)
+doc.AddHeader2("1. Objeto del Contrato")  // imprime azul, sale en negro
+doc.AddText("...").Draw()                 // ya en negro
 ```
-All referenced symbols must have stubs in the WASM file.
-
-**Files**:
-- `fpdf/attachments.go` → add `//go:build !wasm`
-- `fpdf/attachments_wasm.go` → new, struct definitions + stub functions
-
-**Validation**:
-1. `wasmbuild` compiles without errors
-2. `twiggy top ... | grep crypto` → 0 results
-3. `go test ./...` backend tests still pass
-4. Measure new size: `ls -lh web/public/client.wasm`
 
 ---
 
-### Stage 2: Unify fontid — Eliminate duplicated code + crypto/sha1 from backend
-**Risk**: low | **Complexity**: low
+### 3. `DrawLineH` — línea horizontal con color y grosor
 
-**Context**: `fpdf/fontid_back.go` and `fpdf/fontid_wasm.go` duplicate logic unnecessarily.
-The backend version uses `crypto/sha1` + `encoding/json` for `generateFontID` and SHA1 hashing for `generateImageID`. The WASM version uses simple deterministic strings. The simple version is sufficient for both platforms — IDs only need to be unique map keys within a document session.
+Wrapper sobre `fpdf.Line` + `SetDrawColor` + `SetLineWidth`:
 
-**Current state**:
-- `fpdf/fontid_back.go` (!wasm): `crypto/sha1`, `encoding/json` — heavy dependencies for no real benefit
-- `fpdf/fontid_wasm.go` (wasm): simple `Tp + "_" + Name` for fonts, `img_w_h_len(data)` for images
+```go
+func (d *Document) DrawLineH(y, width float64, r, g, b int, thickness float64) *Document
+```
 
-**Problem with WASM image ID**: `img_w_h_len(data)` can collide — two different images with same dimensions and data length get the same ID.
-
-**What to do**:
-1. Delete `fpdf/fontid_back.go` and `fpdf/fontid_wasm.go`
-2. Create single `fpdf/fontid.go` (no build tags) with:
-   ```go
-   func generateFontID(fdt fontDefType) (string, error) {
-       return fdt.Tp + "_" + fdt.Name, nil
-   }
-   ```
-3. For `generateImageID`: use `tinywasm/unixid` — unique, thread-safe, no crypto dependency.
-   ```go
-   func generateImageID(info *ImageInfoType) (string, error) {
-       var id string
-       uid.SetNewID(&id)
-       return id, nil
-   }
-   ```
-   Where `uid` is a package-level `*unixid.UnixID` instance initialized once. IDs are unique per session, not deterministic — this is correct since image IDs only need to be unique map keys within a document lifecycle.
-
-**Files**:
-- Delete `fpdf/fontid_back.go`
-- Delete `fpdf/fontid_wasm.go`
-- Create `fpdf/fontid.go` — unified, no build tags, uses `tinywasm/unixid`
-
-**Validation**:
-1. `wasmbuild` compiles
-2. `go test ./...` passes
-3. `twiggy top ... | grep crypto/sha1` → 0 results
-4. Multiple images in same PDF render correctly (no ID collisions)
+- Usa `d.internal.GetX()` y márgenes para calcular x automáticamente
+- Reset `SetDrawColor(0,0,0)` y `SetLineWidth(0.2)` al salir
+- **No agrega ningún import**: todo es fpdf interno
 
 ---
 
-### Stage 3: Unify fonts_json — Remove encoding/json duplication
-**Risk**: low | **Complexity**: low
+### 4. `fontFamily` — campo en `Document` para escalabilidad de fuente
 
-**Context**: `fpdf/fonts_json_back.go` uses `encoding/json.Unmarshal` and `fpdf/fonts_json_wasm.go` uses `tinywasm/json.Decode`. Since `tinywasm/json` is platform-agnostic, both can use it.
+Actualmente "Arial" está hardcodeado en 10+ lugares. Si el consumidor registra otra fuente como default, los headers siguen usando Arial.
 
-**Note**: `fpdf/font.go` also imports `encoding/json` for `MakeFont` (build tool, not runtime). That file gets `!wasm` build tag in Stage 4 and keeps `encoding/json` since it's backend-only tooling.
+```go
+type Document struct {
+    internal   *fpdf.Fpdf
+    logger     func(message ...any)
+    fonts      []KeyValue // Key: family, Value: path — compatible TinyGo (dot-import)
+    images     []KeyValue // Key: name,   Value: path — compatible TinyGo (dot-import)
+    fontFamily string     // default: "Arial", inicializado en NewDocument()
+}
+```
 
-**What to do**:
-1. Delete `fpdf/fonts_json_back.go` and `fpdf/fonts_json_wasm.go`
-2. Create single `fpdf/fonts_json.go` (no build tags):
-   ```go
-   package fpdf
+`NewDocument()` debe inicializar `fontFamily: "Arial"` explícitamente.
 
-   import "github.com/tinywasm/json"
+Búsqueda de valor por key con iteración simple (sin map):
+```go
+func kvGet(kv []KeyValue, key string) (string, bool) {
+    for i := range kv {
+        if kv[i].Key == key {
+            return kv[i].Value, true
+        }
+    }
+    return "", false
+}
+```
 
-   func unmarshalFontDef(data []byte, def *fontDefType) error {
-       return json.Decode(data, def)
-   }
-   ```
+`RegisterFont` y `RegisterImage` hacen append al slice. Los registros son pocos (< 10), por lo que la búsqueda lineal es O(n) aceptable.
 
-**Files**:
-- Delete `fpdf/fonts_json_back.go`
-- Delete `fpdf/fonts_json_wasm.go`
-- Create `fpdf/fonts_json.go` — unified, no build tags
+Agregar método:
+```go
+func (d *Document) SetDefaultFont(family string) *Document {
+    d.fontFamily = family
+    return d
+}
+```
 
-**Important**: `fontDefType` must conform to what `tinywasm/json.Decode` supports. If `fontDefType` has fields with types not supported by `tinywasm/json`, adjust the struct — the library adapts to `tinywasm/json`, not the other way around.
+Todos los `AddHeader1/2/3`, `AddText`, `AddSeparator` usan `d.fontFamily` en lugar de la string literal `"Arial"`. Incluye `loadDefaultFont()` que registra la fuente bajo el nombre `d.fontFamily`.
 
-**Validation**:
-1. `wasmbuild` compiles
-2. `go test ./...` passes — fonts load correctly with tinywasm/json on backend
-3. Generate PDF with multiple fonts to verify character widths (Cw) parse correctly
-4. Verify all `fontDefType` fields decode correctly (compare output with `encoding/json` in a one-off test)
-
----
-
-### Stage 4: Add `!wasm` build tag to font.go — Preventive
-**Risk**: low | **Complexity**: low
-
-**Context**: `fpdf/font.go` imports `encoding/json`, `compress/zlib`, `os` but currently has no build tag.
-TinyGo eliminates it via dead code elimination, but this is fragile — any future call to `MakeFont` from WASM code would silently pull in ~130 KB of dependencies.
-
-**What to do**:
-1. Add `//go:build !wasm` to `fpdf/font.go`
-2. Verify no WASM code calls any function from this file
-
-**Validation**:
-1. `wasmbuild` compiles
-2. `go test ./...` passes
+**Justificación de escalabilidad**: cambiar la fuente de todo el documento requiere un solo `doc.SetDefaultFont("MyFont")` en lugar de buscar y reemplazar.
 
 ---
 
-### Stage 5: Unify time — Remove time stdlib duplication
-**Risk**: low | **Complexity**: low
+## Eliminar import `strings` de `document.go`
 
-**Context**: `fpdf/time_back.go` uses `time.Time` (stdlib) and `fpdf/time_wasm.go` uses `int64` (tinywasm/time). The underlying type `pdfTime` is also split: `types_back.go` defines it as `time.Time`, `types_wasm.go` as `int64`. The tinywasm ecosystem mandates `int64` (unix nano) for all time operations — this is a design constraint, not optional. Unify to `int64` only.
+Una sola línea usa `strings.LastIndex` en `document.go:104`:
 
-**Files to unify/delete**:
-- Delete `fpdf/types_back.go` and `fpdf/types_wasm.go` → create `fpdf/types.go`: `type pdfTime int64`
-- Delete `fpdf/time_back.go` and `fpdf/time_wasm.go` → create `fpdf/time.go` using `tinywasm/time` only:
-  - API: `SetCreationDate(tm int64)`, `GetCreationDate() int64`, etc.
-  - `timeOrNow(tm pdfTime) int64`: if 0 return `time.Now()`, else return `int64(tm)`
-  - `formatPDFDate(tm pdfTime) string`: use `time.FormatISO8601` + string slicing (from current wasm version)
+```go
+// Antes
+if idx := strings.LastIndex(path, "."); idx != -1 {
+    ext = path[idx+1:]
+}
 
-**Tests to update** (use `int64` unix nano instead of `time.Time`):
-- `fpdf/getter_test.go:126,448` — `TestGetCreationDate`, `TestGetModificationDate`
-- `fpdf/fpdf_test.go:2691` — `Test_SetModificationDate`
-- `fpdf/exampleDir_test.go:55-56` — replace `time.Date(...)` with equivalent unix nano value
+// Después — dot-import, sin prefijo
+if idx := LastIndex(path, "."); idx != -1 {
+    ext = path[idx+1:]
+}
+```
 
-**Note**: once `tinywasm/time` has `FormatCompact` (see tinywasm/time PLAN.md), replace the ISO8601 string slicing with `time.FormatCompact(nano)`.
-
-**Validation**:
-1. `wasmbuild` compiles
-2. `go test ./...` passes (tests updated to int64)
-3. `grep -rn '"time"' fpdf/*.go | grep -v _test.go` → 0 results (only tinywasm/time)
-4. PDF CreationDate/ModDate are correct in generated output
+`LastIndex` ya existe en `tinywasm/fmt/operations.go`. El import `"strings"` se elimina completamente.
 
 ---
 
-### Stage 6: Remove `os` from shared production files — Use io interfaces
-**Risk**: low | **Complexity**: low
+## Lo que NO se propone
 
-**Context**: `os` package should not be used in shared fpdf code. The library already has an injection pattern for file operations (`env.front.go`/`env.back.go`, `def.go:431 fileSize func`). Three production files still import `os`:
+- No se propone `SetDefaultFooter` como función nueva: `SetPageFooter().WithLeftRight(text)` cubre el caso con la API existente.
+- No se propone ningún helper de layout de columnas: eso es responsabilidad del consumidor usando `SetPosition` + `CellAt`.
+- No se introduce `fmt.Sprintf`, `strconv`, ni `strings` — todo via `tinywasm/fmt`.
 
-| File | Usage | Fix |
+---
+
+## Corrección de errores de compilación `[js,wasm]`
+
+### `undefined: fpdf.MakeFont` en tests y herramienta makefont
+
+**Causa**: `MakeFont` está definida en `fpdf/font.go` con `//go:build !wasm`. Los archivos que la usan no tienen la misma restricción, por lo que el compilador la busca al compilar para `js,wasm` y falla.
+
+**Archivos afectados**:
+
+| Archivo | Línea | Fix |
 |---|---|---|
-| `fpdf/svgbasic.go:302` | `os.ReadFile()` in `SVGBasicFileParse()` | Move file-path variant to `!wasm` file. `SVGBasicParse([]byte)` already exists in shared code |
-| `fpdf/util.go:38,50` | `os.Stat()` in `fileExist()`, `fileSize()` | Only called from `font.go` (already `!wasm`). Move to `!wasm` file |
-| `fpdf/list/list.go:37` | `filepath.Walk` + `os.FileInfo` | Backend-only tooling, add `!wasm` build tag |
+| `fpdf/makefont/makefont.go` | 44 | Agregar `//go:build !wasm` en línea 1 |
+| `fpdf/fpdf_test.go` | 735 | Agregar `//go:build !wasm` en línea 1 |
+| `fpdf/issues_test.go` | 235 | Agregar `//go:build !wasm` en línea 1 |
 
-**What to do**:
-1. **svgbasic.go**: `SVGBasicFileParse` should use the injected `readFile` function (same pattern as `WriteFileFunc`/`ReadFileFunc`/`FileSizeFunc`). This requires `SVGBasicFileParse` to be a method on `Fpdf` (or receive the readFile func). Remove direct `os.ReadFile` import.
-2. **util.go**: `fileExist()` and `fileSize()` are only called from `font.go` (already `!wasm` after Stage 4). Move them into `font.go` directly — no need for a separate file. Remove `os` import from `util.go`.
-3. **list/list.go**: add `//go:build !wasm`.
+**Fix**: agregar la build tag al inicio de cada archivo (antes del `package`):
 
-**Files**:
-- `fpdf/svgbasic.go` → replace `os.ReadFile` with injected `f.readFile` in `SVGBasicFileParse`
-- `fpdf/util.go` → remove `os` import, remove `fileExist`/`fileSize`
-- `fpdf/font.go` → absorb `fileExist`/`fileSize` (already `!wasm` from Stage 4)
-- `fpdf/list/list.go` → add `//go:build !wasm`
+```go
+//go:build !wasm
 
-**Validation**:
-1. `wasmbuild` compiles
-2. `go test ./...` passes
-3. Verify: `grep -rn '"os"' fpdf/*.go | grep -v _test.go | grep -v _back.go` → only `font.go` (already `!wasm`)
+package ...
+```
+
+**Justificación**: `makefont` es una herramienta CLI para generar definiciones de fuente — no tiene sentido en WASM. Los tests que la usan son tests de parsing de fuentes AFM/Type1, tampoco aplicables en WASM. No se pierde cobertura útil.
 
 ---
 
-### Stage 7: Verify xcompr_wasm.go imports compress/zlib — Cleanup / Verification
-**Risk**: low | **Complexity**: low
+## Orden de ejecución
 
-**Context**: `fpdf/xcompr_wasm.go` currently imports `compress/zlib` for the `uncompress()` function.
-The agent kept decompression functional in case fonts need it.
-twiggy shows compress/* at only 0.1 KB, suggesting TinyGo may be eliminating most of it.
-
-**What to do**:
-1. Verify if `uncompress()` is actually called in WASM builds (grep for call sites)
-2. If not called: remove `compress/zlib` import, make `uncompress()` return error
-3. If called (e.g., for .z compressed fonts): keep it but document why
-
-**Validation**:
-1. `wasmbuild` compiles
-2. Font loading works in WASM
-3. `twiggy top ... | grep compress` → verify size impact
-
----
-
-### Stage 8: Analyze remaining size for Round 2 candidates
-**Risk**: N/A | **Complexity**: analysis only
-
-After Stages 1-7, run full twiggy analysis to identify next optimization targets:
-```bash
-twiggy top web/public/client.wasm -n 50
-```
-
-Known Round 2 candidates (evaluate in separate plan):
-1. `regexp` in `htmlbasic.go` and `ttfparser.go` → manual parsing
-2. `image/jpeg` (26 KB) + `image/png` (17 KB) → decode in JS Canvas API
-3. fpdf dead code: layers, gradients, spot colors, blending modes
-4. Strip "function names" WASM subsection (~36 KB)
-5. `web/ui.setupUI` (70 KB) — demo code, not the library
-
----
-
-## Execution Order
-
-```
-Stage 1 (attachments crypto/md5) ── Main WASM savings (~25 KB)
-Stage 2 (unify fontid)           ── Remove duplication + crypto/sha1
-Stage 3 (unify fonts_json)       ── Remove encoding/json duplication
-Stage 4 (font.go build tag)      ── Preventive
-Stage 5 (unify time)             ── Remove time stdlib duplication
-Stage 6 (remove os from shared)  ── Clean architecture
-Stage 7 (xcompr_wasm.go verify)  ── Bug fix
-Stage 8 (analysis)               ── Plan next round
-```
-
-## Validation per stage
-Each stage MUST:
-1. Compile: `wasmbuild`
-2. Measure: `ls -lh web/public/client.wasm`
-3. Analyze: `twiggy top web/public/client.wasm -n 30`
-4. Functional: generate PDF with text, table, chart and image in WASM
-5. Backend: `go test ./...`
+1. [ ] Agregar `//go:build !wasm` a `makefont/makefont.go`, `fpdf_test.go`, `issues_test.go`
+2. [ ] Reemplazar `strings.LastIndex` por `fmt.LastIndex` y eliminar import `"strings"` en `document.go`
+3. [ ] Reemplazar `map[string]string` por `[]fmt.KeyValue` en `Document`
+4. [ ] Agregar campo `fontFamily` a `Document` y método `SetDefaultFont`
+5. [ ] Reemplazar literales `"Arial"` en AddHeader/AddText/etc. por `d.fontFamily`
+6. [ ] Agregar reset `SetTextColor(0,0,0)` al final de `AddHeader1/2/3`
+7. [ ] Agregar `WithLeftRight(leftText string)` a `PageFooter`
+8. [ ] Agregar `DrawLineH(y, width, r, g, b, thickness)`
