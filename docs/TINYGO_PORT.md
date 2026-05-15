@@ -311,3 +311,6 @@ tinygo build -target arduino ./cmd/example
 - Implemented `DrawLineH` and enhanced `PageFooter` with `leftText` and standard "Página X/{nb}" numbering.
 - Fixed WASM compilation by adding `//go:build !wasm` to font generation tools and tests.
 - Eliminated `strings` package dependency from `document.go`.
+- Implemented a new Flow-First Layout API centered around `TableBuilder`, `Element`, and `Theme`.
+- Renamed all absolute positioning methods to be package-private to encourage flow-mode usage.
+- Standardized color handling using the `Color` hex-string alias.

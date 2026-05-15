@@ -92,9 +92,13 @@ func (c *LineChart) Draw() {
 
 	// Draw Series
 	for _, s := range c.series {
-		c.doc.internal.SetDrawColor(s.color.R, s.color.G, s.color.B)
+		r, g, b, err := s.color.parse()
+		if err != nil {
+			r, g, b = 100, 100, 100
+		}
+		c.doc.internal.SetDrawColor(r, g, b)
 		c.doc.internal.SetLineWidth(s.width)
-		c.doc.internal.SetFillColor(s.color.R, s.color.G, s.color.B)
+		c.doc.internal.SetFillColor(r, g, b)
 
 		for i := 0; i < len(s.data)-1; i++ {
 			x1 := x + 10 + float64(i)*stepX

@@ -284,6 +284,11 @@ func (f *Fpdf) Error() error {
 	return f.err
 }
 
+// GetPageBreakTrigger returns the threshold used to trigger page breaks.
+func (f *Fpdf) GetPageBreakTrigger() float64 {
+	return f.pageBreakTrigger
+}
+
 // GetCellMargin returns the cell margin. This is the amount of space before
 // and after the text within a cell that's left blank, and is in units passed
 // to New(). It defaults to 1mm.

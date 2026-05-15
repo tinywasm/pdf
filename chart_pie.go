@@ -84,7 +84,11 @@ func (c *PieChart) Draw() {
 		angle := (s.value / total) * 360.0
 		endAngle := startAngle + angle
 
-		c.doc.internal.SetFillColor(s.color.R, s.color.G, s.color.B)
+		r, g, b, err := s.color.parse()
+		if err != nil {
+			r, g, b = 100, 100, 100
+		}
+		c.doc.internal.SetFillColor(r, g, b)
 
 		c.doc.internal.MoveTo(cx, cy)
 		c.doc.internal.ArcTo(cx, cy, radius, radius, 0, startAngle, endAngle)
