@@ -1,4 +1,5 @@
 *.0
+*.pdf
 coverage
 font/CalligrapherRegular.json
 font/CalligrapherRegular.z

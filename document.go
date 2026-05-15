@@ -247,6 +247,12 @@ func (d *Document) SetCursorY(y float64) *Document {
 	return d
 }
 
+// SetCursorX moves the cursor to an absolute X position.
+func (d *Document) SetCursorX(x float64) *Document {
+	d.internal.SetX(x)
+	return d
+}
+
 // GetCursorY returns the current Y position.
 func (d *Document) GetCursorY() float64 {
 	return d.internal.GetY()
