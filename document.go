@@ -34,6 +34,8 @@ func NewDocument() *Document {
 		fpdf.ReadFileFunc(d.readFile),
 		fpdf.FileSizeFunc(d.fileSize),
 	)
+	d.internal.SetMargins(20, 20, 20)
+	d.internal.SetAutoPageBreak(true, 20)
 	d.loadDefaultFont()
 	return d
 }
@@ -44,7 +46,14 @@ func (d *Document) loadDefaultFont() {
 	if err != nil {
 		return // fallback to built-in Arial (Latin-1 only)
 	}
-	d.internal.AddUTF8FontFromBytes("Arial", "", data)
+	d.addUTF8FontAllStyles("Arial", data)
+}
+
+// addUTF8FontAllStyles registers a TTF font for all styles (regular, bold, italic, bold-italic).
+func (d *Document) addUTF8FontAllStyles(family string, data []byte) {
+	for _, style := range []string{"", "B", "I", "BI"} {
+		d.internal.AddUTF8FontFromBytes(family, style, data)
+	}
 }
 
 // SetLog sets the logger function.
@@ -81,8 +90,7 @@ func (d *Document) Load(cb func(error)) {
 			cb(err)
 			return
 		}
-		// We assume regular style ("") and UTF8 font for now
-		d.internal.AddUTF8FontFromBytes(family, "", data)
+		d.addUTF8FontAllStyles(family, data)
 	}
 
 	for name, path := range d.images {
@@ -131,25 +139,25 @@ func (d *Document) AddText(text string) *TextComponent {
 
 // AddHeader1 adds a level 1 header.
 func (d *Document) AddHeader1(text string) *Document {
-	d.internal.SetFont("Arial", "B", 24)
-	d.internal.CellFormat(0, 10, text, "", 1, "L", false, 0, "")
-	d.internal.Ln(5)
+	d.internal.SetFont("Arial", "B", 16)
+	d.internal.CellFormat(0, 8, text, "", 1, "L", false, 0, "")
+	d.internal.Ln(3)
 	return d
 }
 
 // AddHeader2 adds a level 2 header.
 func (d *Document) AddHeader2(text string) *Document {
-	d.internal.SetFont("Arial", "B", 18)
-	d.internal.CellFormat(0, 10, text, "", 1, "L", false, 0, "")
-	d.internal.Ln(4)
+	d.internal.SetFont("Arial", "B", 12)
+	d.internal.CellFormat(0, 7, text, "", 1, "L", false, 0, "")
+	d.internal.Ln(2)
 	return d
 }
 
 // AddHeader3 adds a level 3 header.
 func (d *Document) AddHeader3(text string) *Document {
-	d.internal.SetFont("Arial", "B", 14)
-	d.internal.CellFormat(0, 10, text, "", 1, "L", false, 0, "")
-	d.internal.Ln(3)
+	d.internal.SetFont("Arial", "B", 10)
+	d.internal.CellFormat(0, 6, text, "", 1, "L", false, 0, "")
+	d.internal.Ln(1)
 	return d
 }
 
@@ -184,6 +192,59 @@ func (d *Document) AddImage(name string) *ImageComponent {
 		doc:  d,
 		name: name,
 	}
+}
+
+// DrawImageAt places an image at an absolute (x, y) position with given width (height auto).
+func (d *Document) DrawImageAt(name string, x, y, width float64) *Document {
+	d.internal.Image(name, x, y, width, 0, false, "", 0, "")
+	return d
+}
+
+// SetPosition moves the cursor to an absolute (x, y) position.
+func (d *Document) SetPosition(x, y float64) *Document {
+	d.internal.SetXY(x, y)
+	return d
+}
+
+// SetCursorY moves the cursor to an absolute Y position.
+func (d *Document) SetCursorY(y float64) *Document {
+	d.internal.SetY(y)
+	return d
+}
+
+// GetCursorY returns the current Y position.
+func (d *Document) GetCursorY() float64 {
+	return d.internal.GetY()
+}
+
+// DrawFilledRect draws a filled rectangle at (x, y) with given width and height.
+func (d *Document) DrawFilledRect(x, y, w, h float64, r, g, b int) *Document {
+	d.internal.SetFillColor(r, g, b)
+	d.internal.Rect(x, y, w, h, "F")
+	d.internal.SetFillColor(255, 255, 255)
+	return d
+}
+
+// SetTextColor sets the text color for subsequent AddText calls.
+func (d *Document) SetTextColor(r, g, b int) *Document {
+	d.internal.SetTextColor(r, g, b)
+	return d
+}
+
+// DrawTextAt places a single-line text at absolute (x, y) with given font size.
+func (d *Document) DrawTextAt(x, y float64, text, style string, size float64) *Document {
+	d.internal.SetXY(x, y)
+	d.internal.SetFont("Arial", style, size)
+	d.internal.Cell(0, size/2.8, text)
+	return d
+}
+
+// CellAt draws a cell at absolute (x,y) with given width, height, text, and alignment.
+func (d *Document) CellAt(x, y, w, h float64, text, style string, size float64, align string) *Document {
+	d.internal.SetXY(x, y)
+	d.internal.SetFont("Arial", style, size)
+	d.internal.CellFormat(w, h, text, "", 0, align, false, 0, "")
+	return d
 }
 
 // --- Components Helpers ---
@@ -238,6 +299,9 @@ func (t *TextComponent) Draw() *Document {
 	size := t.size
 	if size == 0 {
 		pt, _ := t.doc.internal.GetFontSize()
+		if pt < 1 {
+			pt = 10
+		}
 		size = pt
 	}
 
@@ -249,7 +313,7 @@ func (t *TextComponent) Draw() *Document {
 		align = t.align
 	}
 
-	t.doc.internal.MultiCell(0, 5, t.text, "", align, false)
+	t.doc.internal.MultiCell(0, 6, t.text, "", align, false)
 
 	// Reset text color to black (optional, but good practice)
 	t.doc.internal.SetTextColor(0, 0, 0)
