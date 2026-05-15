@@ -3,7 +3,6 @@ package pdf
 import (
 	"bytes"
 	"io"
-	"strings"
 
 	. "github.com/tinywasm/fmt"
 	"github.com/tinywasm/pdf/fpdf"
@@ -15,8 +14,10 @@ type Document struct {
 	logger   func(message ...any)
 
 	// Resource registries
-	fonts  map[string]string // family -> path
-	images map[string]string // name -> path
+	fonts  []KeyValue // family -> path
+	images []KeyValue // name -> path
+
+	fontFamily string
 }
 
 // DefaultFontPath is the default path to the Arial UTF-8 font.
@@ -25,8 +26,9 @@ const DefaultFontPath = "fonts/Arial.ttf"
 // NewDocument creates a new Document instance with UTF-8 support.
 func NewDocument() *Document {
 	d := &Document{
-		fonts:  make(map[string]string),
-		images: make(map[string]string),
+		fonts:      []KeyValue{},
+		images:     []KeyValue{},
+		fontFamily: "Arial",
 	}
 	d.initIO() // initializes logger + IO depending on build tag
 	d.internal = fpdf.New(
@@ -46,7 +48,13 @@ func (d *Document) loadDefaultFont() {
 	if err != nil {
 		return // fallback to built-in Arial (Latin-1 only)
 	}
-	d.addUTF8FontAllStyles("Arial", data)
+	d.addUTF8FontAllStyles(d.fontFamily, data)
+}
+
+// SetDefaultFont sets the default font family for the document.
+func (d *Document) SetDefaultFont(family string) *Document {
+	d.fontFamily = family
+	return d
 }
 
 // addUTF8FontAllStyles registers a TTF font for all styles (regular, bold, italic, bold-italic).
@@ -69,22 +77,34 @@ func (d *Document) Log(message ...any) {
 	}
 }
 
+// kvGet retrieves a value from a KeyValue slice by key.
+// Note: This helper is currently available for future use in resource lookups.
+func kvGet(kv []KeyValue, key string) (string, bool) {
+	for i := range kv {
+		if kv[i].Key == key {
+			return kv[i].Value, true
+		}
+	}
+	return "", false
+}
+
 // RegisterFont registers a font to be loaded.
 // path should be the path to the .ttf file.
 func (d *Document) RegisterFont(family, path string) *Document {
-	d.fonts[family] = path
+	d.fonts = append(d.fonts, KeyValue{Key: family, Value: path})
 	return d
 }
 
 // RegisterImage registers an image to be loaded.
 func (d *Document) RegisterImage(name, path string) *Document {
-	d.images[name] = path
+	d.images = append(d.images, KeyValue{Key: name, Value: path})
 	return d
 }
 
 // Load loads all registered resources.
 func (d *Document) Load(cb func(error)) {
-	for family, path := range d.fonts {
+	for i := range d.fonts {
+		family, path := d.fonts[i].Key, d.fonts[i].Value
 		data, err := d.readFile(path)
 		if err != nil {
 			cb(err)
@@ -93,7 +113,8 @@ func (d *Document) Load(cb func(error)) {
 		d.addUTF8FontAllStyles(family, data)
 	}
 
-	for name, path := range d.images {
+	for i := range d.images {
+		name, path := d.images[i].Key, d.images[i].Value
 		data, err := d.readFile(path)
 		if err != nil {
 			cb(err)
@@ -101,7 +122,7 @@ func (d *Document) Load(cb func(error)) {
 		}
 
 		ext := ""
-		if idx := strings.LastIndex(path, "."); idx != -1 {
+		if idx := LastIndex(path, "."); idx != -1 {
 			ext = path[idx+1:]
 		}
 
@@ -139,24 +160,27 @@ func (d *Document) AddText(text string) *TextComponent {
 
 // AddHeader1 adds a level 1 header.
 func (d *Document) AddHeader1(text string) *Document {
-	d.internal.SetFont("Arial", "B", 16)
+	d.internal.SetFont(d.fontFamily, "B", 16)
 	d.internal.CellFormat(0, 8, text, "", 1, "L", false, 0, "")
+	d.internal.SetTextColor(0, 0, 0)
 	d.internal.Ln(3)
 	return d
 }
 
 // AddHeader2 adds a level 2 header.
 func (d *Document) AddHeader2(text string) *Document {
-	d.internal.SetFont("Arial", "B", 12)
+	d.internal.SetFont(d.fontFamily, "B", 12)
 	d.internal.CellFormat(0, 7, text, "", 1, "L", false, 0, "")
+	d.internal.SetTextColor(0, 0, 0)
 	d.internal.Ln(2)
 	return d
 }
 
 // AddHeader3 adds a level 3 header.
 func (d *Document) AddHeader3(text string) *Document {
-	d.internal.SetFont("Arial", "B", 10)
+	d.internal.SetFont(d.fontFamily, "B", 10)
 	d.internal.CellFormat(0, 6, text, "", 1, "L", false, 0, "")
+	d.internal.SetTextColor(0, 0, 0)
 	d.internal.Ln(1)
 	return d
 }
@@ -186,6 +210,17 @@ func (d *Document) AddSeparator() *Document {
 	return d
 }
 
+// DrawLineH draws a horizontal line with given color and thickness.
+func (d *Document) DrawLineH(y, width float64, r, g, b int, thickness float64) *Document {
+	x := d.internal.GetX()
+	d.internal.SetDrawColor(r, g, b)
+	d.internal.SetLineWidth(thickness)
+	d.internal.Line(x, y, x+width, y)
+	d.internal.SetDrawColor(0, 0, 0)
+	d.internal.SetLineWidth(0.2)
+	return d
+}
+
 // AddImage adds an image by name (must be registered/loaded).
 func (d *Document) AddImage(name string) *ImageComponent {
 	return &ImageComponent{
@@ -212,6 +247,12 @@ func (d *Document) SetCursorY(y float64) *Document {
 	return d
 }
 
+// SetCursorX moves the cursor to an absolute X position.
+func (d *Document) SetCursorX(x float64) *Document {
+	d.internal.SetX(x)
+	return d
+}
+
 // GetCursorY returns the current Y position.
 func (d *Document) GetCursorY() float64 {
 	return d.internal.GetY()
@@ -234,7 +275,7 @@ func (d *Document) SetTextColor(r, g, b int) *Document {
 // DrawTextAt places a single-line text at absolute (x, y) with given font size.
 func (d *Document) DrawTextAt(x, y float64, text, style string, size float64) *Document {
 	d.internal.SetXY(x, y)
-	d.internal.SetFont("Arial", style, size)
+	d.internal.SetFont(d.fontFamily, style, size)
 	d.internal.Cell(0, size/2.8, text)
 	return d
 }
@@ -242,7 +283,7 @@ func (d *Document) DrawTextAt(x, y float64, text, style string, size float64) *D
 // CellAt draws a cell at absolute (x,y) with given width, height, text, and alignment.
 func (d *Document) CellAt(x, y, w, h float64, text, style string, size float64, align string) *Document {
 	d.internal.SetXY(x, y)
-	d.internal.SetFont("Arial", style, size)
+	d.internal.SetFont(d.fontFamily, style, size)
 	d.internal.CellFormat(w, h, text, "", 0, align, false, 0, "")
 	return d
 }
@@ -293,7 +334,7 @@ func (t *TextComponent) Draw() *Document {
 	// Default font if not set
 	family := t.doc.internal.GetFontFamily()
 	if family == "" {
-		family = "Arial" // Fallback
+		family = t.doc.fontFamily // Fallback
 	}
 
 	size := t.size
@@ -389,7 +430,7 @@ func (d *Document) SetPageHeader() *PageHeader {
 	// Register the callback immediately, but it captures the struct so updates will reflect
 	d.internal.SetHeaderFunc(func() {
 		d.internal.SetY(10) // Standard header position
-		d.internal.SetFont("Arial", "I", 8)
+		d.internal.SetFont(d.fontFamily, "I", 8)
 		if ph.leftText != "" {
 			d.internal.Cell(0, 10, ph.leftText)
 		}
@@ -417,6 +458,7 @@ func (ph *PageHeader) SetRightText(t string) *PageHeader {
 type PageFooter struct {
 	doc        *Document
 	centerText string
+	leftText   string
 	pageTotal  bool
 }
 
@@ -424,22 +466,37 @@ func (d *Document) SetPageFooter() *PageFooter {
 	pf := &PageFooter{doc: d}
 	d.internal.SetFooterFunc(func() {
 		d.internal.SetY(-15) // Standard footer position
-		d.internal.SetFont("Arial", "I", 8)
+		d.internal.SetFont(d.fontFamily, "I", 8)
+
+		if pf.leftText != "" {
+			d.internal.SetTextColor(130, 130, 130)
+			d.internal.CellFormat(0, 10, pf.leftText, "", 0, "L", false, 0, "")
+			d.internal.SetTextColor(0, 0, 0)
+		}
+
 		if pf.centerText != "" {
 			d.internal.CellFormat(0, 10, pf.centerText, "", 0, "C", false, 0, "")
 		}
+
 		if pf.pageTotal {
-			// We can use alias for total pages if enabled
-			// d.internal.AliasNbPages("") should be called somewhere
-			pageStr := Convert(d.internal.PageNo()).String()
-			d.internal.CellFormat(0, 10, pageStr+" / {nb}", "", 0, "R", false, 0, "")
+			pageNo := d.internal.PageNo()
+			pageStr := Sprintf("Página %s/{nb}", Convert(pageNo).String())
+			d.internal.CellFormat(0, 10, pageStr, "", 0, "R", false, 0, "")
 		}
+		d.internal.SetTextColor(0, 0, 0)
 	})
 	return pf
 }
 
 func (pf *PageFooter) SetCenterText(t string) *PageFooter {
 	pf.centerText = t
+	return pf
+}
+
+func (pf *PageFooter) WithLeftRight(leftText string) *PageFooter {
+	pf.leftText = leftText
+	pf.pageTotal = true
+	pf.doc.internal.AliasNbPages("")
 	return pf
 }
 

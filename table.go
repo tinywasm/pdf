@@ -105,7 +105,7 @@ func (t *Table) Draw() *Document {
 
 	fontFamily := t.doc.internal.GetFontFamily()
 	if fontFamily == "" {
-		fontFamily = "Arial"
+		fontFamily = t.doc.fontFamily
 	}
 
 	headerFont := t.headerStyle.Font

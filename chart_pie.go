@@ -57,7 +57,7 @@ func (c *PieChart) Draw() {
 
 	// Title
 	if c.title != "" {
-		c.doc.internal.SetFont("Arial", "B", 12)
+		c.doc.internal.SetFont(c.doc.fontFamily, "B", 12)
 		c.doc.internal.CellFormat(c.width, 10, c.title, "", 1, "C", false, 0, "")
 		y = c.doc.internal.GetY() + 5
 	}
@@ -101,7 +101,7 @@ func (c *PieChart) Draw() {
 		ty := cy - (radius * 0.7) * math.Sin(midRad)
 
 		c.doc.internal.SetTextColor(255, 255, 255)
-		c.doc.internal.SetFont("Arial", "B", 10)
+		c.doc.internal.SetFont(c.doc.fontFamily, "B", 10)
 		txt := s.label
 		if len(txt) > 0 {
 			wTxt := c.doc.internal.GetStringWidth(txt)

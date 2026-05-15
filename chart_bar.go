@@ -64,7 +64,7 @@ func (c *BarChart) Draw() {
 
 	// Title
 	if c.title != "" {
-		c.doc.internal.SetFont("Arial", "B", 12)
+		c.doc.internal.SetFont(c.doc.fontFamily, "B", 12)
 		c.doc.internal.CellFormat(c.width, 10, c.title, "", 1, "C", false, 0, "")
 		y = c.doc.internal.GetY() + 5
 	}
@@ -104,7 +104,7 @@ func (c *BarChart) Draw() {
 
 		// Draw Text
 		c.doc.internal.SetTextColor(0, 0, 0)
-		c.doc.internal.SetFont("Arial", "", 8)
+		c.doc.internal.SetFont(c.doc.fontFamily, "", 8)
 
 		// Value on top
 		valStr := Sprintf("%.1f", bar.value)

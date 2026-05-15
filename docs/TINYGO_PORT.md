@@ -304,3 +304,10 @@ tinygo build -target arduino ./cmd/example
 ---
 
 **Note**: This migration eliminates ALL standard library dependencies for string operations, making Fpdf a truly minimal-footprint PDF library optimized for WebAssembly and embedded deployments.
+
+### Update: Professional Layout API & Font Refactor
+- Replaced hardcoded "Arial" with dynamic `fontFamily` in all components (Charts, Tables, Text, Headers, Footers).
+- Refactored resource registries (`fonts`, `images`) from `map[string]string` to `[]KeyValue` for TinyGo compatibility.
+- Implemented `DrawLineH` and enhanced `PageFooter` with `leftText` and standard "Página X/{nb}" numbering.
+- Fixed WASM compilation by adding `//go:build !wasm` to font generation tools and tests.
+- Eliminated `strings` package dependency from `document.go`.

@@ -1,3 +1,5 @@
+//go:build !wasm
+
 package fpdf_test
 
 import (
