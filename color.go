@@ -64,6 +64,20 @@ type Theme struct {
 	Spacing struct {
 		Paragraph, Section, Page float64
 	}
+	// Page size in mm. Zero values keep the fpdf default (A4).
+	Page ThemePage
+	// Margin in mm applied to all four sides. Zero values keep the default (20mm).
+	Margin ThemeMargin
+}
+
+// ThemePage defines the page dimensions in millimetres.
+type ThemePage struct {
+	Width, Height float64
+}
+
+// ThemeMargin defines the four page margins in millimetres.
+type ThemeMargin struct {
+	Top, Right, Bottom, Left float64
 }
 
 var DefaultTheme = Theme{

@@ -8,6 +8,7 @@ type Element interface {
 
 // Text element represents a paragraph of text.
 type TextElement struct {
+	doc     *Document // set by Document.AddText (flow mode); nil for package-level pdf.Text
 	content string
 	bold    bool
 	italic  bool
@@ -18,6 +19,40 @@ type TextElement struct {
 
 func Text(s string) *TextElement {
 	return &TextElement{content: s, align: "L"}
+}
+
+// Draw renders this text in flow mode. Requires the element to have been
+// created via Document.AddText. Returns the document for chaining.
+func (t *TextElement) Draw() *Document {
+	if t.doc == nil {
+		return nil
+	}
+	d := t.doc
+	style := t.getStyle()
+	size := t.getSize(d)
+	color := t.color
+	if color == "" {
+		color = d.theme.Body
+	}
+	d.setTextColor(color)
+	d.internal.SetFont(d.fontFamily, style, size)
+
+	// Force X back to the left margin so flow text always uses the full
+	// content width, even if a previous primitive (e.g. a table) left the
+	// cursor at the right edge.
+	lMargin, _, _, _ := d.internal.GetMargins()
+	d.setCursorX(lMargin)
+
+	align := t.align
+	if align == "" {
+		align = "L"
+	}
+	// Width 0 = wrap to right margin. Line height = size * 0.45 gives a
+	// ~1.27x ratio (size 10 -> 4.5mm), comfortable for body copy and close
+	// to the Word/Google Docs default of 1.15-1.2x.
+	d.internal.MultiCell(0, size*0.45, t.content, "", align, false)
+	d.setTextColor(d.theme.Body)
+	return d
 }
 
 func (t *TextElement) Bold() *TextElement {
@@ -89,17 +124,20 @@ func (t *TextElement) draw(doc *Document, x, y, w float64) float64 {
 	doc.setTextColor(color)
 	doc.internal.SetFont(doc.fontFamily, style, size)
 
-	// MultiCell at (x, y)
+	// MultiCell wraps subsequent lines to the document's left margin, not
+	// to x. Temporarily move the left margin to x so wrapping happens
+	// inside the cell. Restore it after rendering.
+	origLMargin, _, _, _ := doc.internal.GetMargins()
+	doc.internal.SetLeftMargin(x)
 	doc.setPosition(x, y)
 
-	// We need to calculate height. MultiCell doesn't return it directly.
-	// But we can calculate it by splitting lines.
-	lines := doc.internal.SplitText(t.content, w)
-	lineHeight := size * 0.5 // approximate
-	height := float64(len(lines)) * lineHeight
-
+	lineHeight := size * 0.5
+	yBefore := doc.internal.GetY()
 	doc.internal.MultiCell(w, lineHeight, t.content, "", t.align, false)
-	return height
+	yAfter := doc.internal.GetY()
+
+	doc.internal.SetLeftMargin(origLMargin)
+	return yAfter - yBefore
 }
 
 func (t *TextElement) measure(doc *Document, w float64) (float64, float64) {
@@ -119,6 +157,7 @@ func (t *TextElement) measure(doc *Document, w float64) (float64, float64) {
 
 // Image element.
 type ImageElement struct {
+	doc    *Document // set by Document.AddImage (flow mode); nil for package-level pdf.Image
 	name   string
 	width  float64
 	height float64
@@ -127,6 +166,23 @@ type ImageElement struct {
 
 func Image(name string) *ImageElement {
 	return &ImageElement{name: name, align: "L"}
+}
+
+// Draw renders this image in flow mode. Requires the element to have been
+// created via Document.AddImage. Returns the document for chaining.
+func (i *ImageElement) Draw() *Document {
+	if i.doc == nil {
+		return nil
+	}
+	d := i.doc
+	x := d.getCursorX()
+	y := d.getCursorY()
+	pageW, _ := d.internal.GetPageSize()
+	lMargin, _, rMargin, _ := d.internal.GetMargins()
+	w := pageW - lMargin - rMargin - (x - lMargin)
+	h := i.draw(d, x, y, w)
+	d.setCursorY(y + h)
+	return d
 }
 
 func (i *ImageElement) Width(mm float64) *ImageElement {

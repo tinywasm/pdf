@@ -8,13 +8,21 @@ import (
 	"github.com/tinywasm/pdf/fpdf"
 )
 
+// fontEntry holds a font registration request.
+type fontEntry struct {
+	family    string
+	style     string // "", "B", "I", "BI"
+	path      string
+	allStyles bool // when true, register the file for all four styles
+}
+
 // Document wraps the internal fpdf.Fpdf to provide a fluent API.
 type Document struct {
 	internal *fpdf.Fpdf
 	logger   func(message ...any)
 
 	// Resource registries
-	fonts  []KeyValue // family -> path
+	fonts  []fontEntry
 	images []KeyValue // name -> path
 
 	fontFamily string
@@ -59,7 +67,7 @@ func WithDefaultFont(family, path string) Option {
 // NewDocument creates a new Document instance with UTF-8 support.
 func NewDocument(opts ...Option) *Document {
 	d := &Document{
-		fonts:      []KeyValue{},
+		fonts:      []fontEntry{},
 		images:     []KeyValue{},
 		fontFamily: "Arial",
 		theme:      DefaultTheme,
@@ -90,10 +98,46 @@ func (d *Document) loadDefaultFont() {
 	d.addUTF8FontAllStyles(d.fontFamily, data)
 }
 
-// SetTheme sets the document theme.
+// SetTheme sets the document theme. Missing numeric fields (Sizes, Spacing)
+// inherit from DefaultTheme so callers can specify only the colors they care
+// about without producing zero-height text.
 func (d *Document) SetTheme(theme Theme) *Document {
+	if theme.Sizes.H1 == 0 {
+		theme.Sizes.H1 = DefaultTheme.Sizes.H1
+	}
+	if theme.Sizes.H2 == 0 {
+		theme.Sizes.H2 = DefaultTheme.Sizes.H2
+	}
+	if theme.Sizes.H3 == 0 {
+		theme.Sizes.H3 = DefaultTheme.Sizes.H3
+	}
+	if theme.Sizes.Body == 0 {
+		theme.Sizes.Body = DefaultTheme.Sizes.Body
+	}
+	if theme.Sizes.Small == 0 {
+		theme.Sizes.Small = DefaultTheme.Sizes.Small
+	}
+	if theme.Spacing.Paragraph == 0 {
+		theme.Spacing.Paragraph = DefaultTheme.Spacing.Paragraph
+	}
+	if theme.Spacing.Section == 0 {
+		theme.Spacing.Section = DefaultTheme.Spacing.Section
+	}
+	if theme.Spacing.Page == 0 {
+		theme.Spacing.Page = DefaultTheme.Spacing.Page
+	}
 	d.theme = theme
-	d.fontFamily = theme.FontFamily
+	if theme.FontFamily != "" {
+		d.fontFamily = theme.FontFamily
+	}
+	if theme.Page.Width > 0 && theme.Page.Height > 0 {
+		d.internal.SetPageSizeMM(theme.Page.Width, theme.Page.Height)
+	}
+	if theme.Margin.Top > 0 || theme.Margin.Right > 0 || theme.Margin.Bottom > 0 || theme.Margin.Left > 0 {
+		m := theme.Margin
+		d.internal.SetMargins(m.Left, m.Top, m.Right)
+		d.internal.SetAutoPageBreak(true, m.Bottom)
+	}
 	return d
 }
 
@@ -145,10 +189,15 @@ func kvGet(kv []KeyValue, key string) (string, bool) {
 	return "", false
 }
 
-// RegisterFont registers a font to be loaded.
-// path should be the path to the .ttf file.
+// RegisterFont registers a TTF font for all styles (regular, bold, italic, bold-italic).
 func (d *Document) RegisterFont(family, path string) *Document {
-	d.fonts = append(d.fonts, KeyValue{Key: family, Value: path})
+	d.fonts = append(d.fonts, fontEntry{family: family, path: path, allStyles: true})
+	return d
+}
+
+// RegisterFontStyle registers a TTF font for a specific style ("", "B", "I", "BI").
+func (d *Document) RegisterFontStyle(family, style, path string) *Document {
+	d.fonts = append(d.fonts, fontEntry{family: family, style: style, path: path})
 	return d
 }
 
@@ -161,13 +210,17 @@ func (d *Document) RegisterImage(name, path string) *Document {
 // Load loads all registered resources.
 func (d *Document) Load(cb func(error)) {
 	for i := range d.fonts {
-		family, path := d.fonts[i].Key, d.fonts[i].Value
-		data, err := d.readFile(path)
+		fe := d.fonts[i]
+		data, err := d.readFile(fe.path)
 		if err != nil {
 			cb(err)
 			return
 		}
-		d.addUTF8FontAllStyles(family, data)
+		if fe.allStyles {
+			d.addUTF8FontAllStyles(fe.family, data)
+		} else {
+			d.internal.AddUTF8FontFromBytes(fe.family, fe.style, data)
+		}
 	}
 
 	for i := range d.images {
@@ -221,12 +274,9 @@ func (d *Document) OutputTo(w io.Writer) error {
 
 // --- Base Components ---
 
-// AddText adds a text paragraph.
-func (d *Document) AddText(text string) *TextComponent {
-	return &TextComponent{
-		doc:  d,
-		text: text,
-	}
+// AddText adds a text paragraph in flow mode.
+func (d *Document) AddText(text string) *TextElement {
+	return &TextElement{doc: d, content: text, align: "L"}
 }
 
 // AddHeader1 adds a level 1 header.
@@ -302,12 +352,9 @@ func (d *Document) drawLineH(x, y, width float64, color Color, thickness float64
 	d.internal.SetLineWidth(0.2)
 }
 
-// AddImage adds an image by name (must be registered/loaded).
-func (d *Document) AddImage(name string) *ImageComponent {
-	return &ImageComponent{
-		doc:  d,
-		name: name,
-	}
+// AddImage adds an image by name (must be registered/loaded) in flow mode.
+func (d *Document) AddImage(name string) *ImageElement {
+	return &ImageElement{doc: d, name: name, align: "L"}
 }
 
 func (d *Document) drawImageAt(name string, x, y, width float64) {
@@ -369,135 +416,6 @@ func (d *Document) cellAt(x, y, w, h float64, text, style string, size float64, 
 func (d *Document) measureText(text, style string, size float64) (width, height float64) {
 	d.internal.SetFont(d.fontFamily, style, size)
 	return d.internal.GetStringWidth(text), size / 2.8
-}
-
-// --- Components Helpers ---
-
-type TextComponent struct {
-	doc   *Document
-	text  string
-	align string
-	color [3]int
-	bold  bool
-	size  float64
-}
-
-func (t *TextComponent) Bold() *TextComponent {
-	t.bold = true
-	return t
-}
-
-func (t *TextComponent) AlignRight() *TextComponent {
-	t.align = "R"
-	return t
-}
-
-func (t *TextComponent) AlignCenter() *TextComponent {
-	t.align = "C"
-	return t
-}
-
-func (t *TextComponent) Justify() *TextComponent {
-	t.align = "J"
-	return t
-}
-
-func (t *TextComponent) SetColor(r, g, b int) *TextComponent {
-	t.color = [3]int{r, g, b}
-	return t
-}
-
-func (t *TextComponent) Draw() *Document {
-	// Apply styles
-	style := ""
-	if t.bold {
-		style = "B"
-	}
-
-	// Default font if not set
-	family := t.doc.internal.GetFontFamily()
-	if family == "" {
-		family = t.doc.fontFamily // Fallback
-	}
-
-	size := t.size
-	if size == 0 {
-		pt, _ := t.doc.internal.GetFontSize()
-		if pt < 1 {
-			pt = 10
-		}
-		size = pt
-	}
-
-	t.doc.internal.SetFont(family, style, size)
-	t.doc.internal.SetTextColor(t.color[0], t.color[1], t.color[2])
-
-	align := "L"
-	if t.align != "" {
-		align = t.align
-	}
-
-	t.doc.internal.MultiCell(0, 6, t.text, "", align, false)
-
-	// Reset text color to black (optional, but good practice)
-	t.doc.internal.SetTextColor(0, 0, 0)
-
-	return t.doc
-}
-
-type ImageComponent struct {
-	doc    *Document
-	name   string
-	width  float64
-	height float64
-	align  string
-}
-
-func (i *ImageComponent) Width(w float64) *ImageComponent {
-	i.width = w
-	return i
-}
-
-func (i *ImageComponent) Height(h float64) *ImageComponent {
-	i.height = h
-	return i
-}
-
-func (i *ImageComponent) AlignCenter() *ImageComponent {
-	i.align = "C"
-	return i
-}
-
-func (i *ImageComponent) Draw() *Document {
-	// Logic to center image if needed
-	x := i.doc.internal.GetX()
-	y := i.doc.internal.GetY()
-
-	if i.align == "C" {
-		w, _ := i.doc.internal.GetPageSize()
-		lMargin, _, rMargin, _ := i.doc.internal.GetMargins()
-		pageWidth := w - lMargin - rMargin
-		// We need to know image width. If 0, fpdf calculates it.
-		// For centering we might need to know it beforehand or let fpdf handle it?
-		// fpdf.Image doesn't support alignment directly.
-		// We can use GetImageInfo to get dimensions.
-		info := i.doc.internal.GetImageInfo(i.name)
-		if info != nil {
-			// Calculate aspect ratio width if i.width is set
-			imgW := i.width
-			if imgW == 0 {
-				imgW = info.Width() // This returns width in user units (mm/pt)
-				if i.height != 0 {
-					imgW = i.height * info.Width() / info.Height()
-				}
-			}
-
-			x = lMargin + (pageWidth-imgW)/2
-		}
-	}
-
-	i.doc.internal.Image(i.name, x, y, i.width, i.height, false, "", 0, "")
-	return i.doc
 }
 
 // --- Page Header/Footer ---

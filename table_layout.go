@@ -120,6 +120,9 @@ func (t *TableBuilder) Draw() *Document {
 		t.doc.setCursorY(currY + rowHeight)
 	}
 
+	// Leave the cursor at the left margin so subsequent flow elements
+	// render from the page edge, not from the last cell's X position.
+	t.doc.setCursorX(lMargin)
 	return t.doc
 }
 
@@ -158,9 +161,51 @@ func (t *TableBuilder) resolveWidths(availW float64) []float64 {
 	}
 
 	if len(autoIndices) > 0 {
-		autoW := remainingW / float64(len(autoIndices))
-		for _, idx := range autoIndices {
-			widths[idx] = autoW
+		// Measure each auto column's intrinsic content width: the widest
+		// cell in that column when given unbounded width.
+		intrinsic := make([]float64, len(autoIndices))
+		total := 0.0
+		for k, idx := range autoIndices {
+			maxW := 0.0
+			for _, row := range t.rows {
+				if idx >= len(row) {
+					continue
+				}
+				cw, _ := row[idx].measure(t.doc, 0)
+				if cw > maxW {
+					maxW = cw
+				}
+			}
+			intrinsic[k] = maxW
+			total += maxW
+		}
+
+		switch {
+		case total > remainingW && total > 0:
+			// Overflow: scale autos down proportionally to fit.
+			scale := remainingW / total
+			for k, idx := range autoIndices {
+				widths[idx] = intrinsic[k] * scale
+			}
+		case total < remainingW:
+			// Surplus: absorb the leftover so the table always fills the
+			// content area. Distribute proportionally to intrinsic width,
+			// or equally when all intrinsic widths are zero.
+			extra := remainingW - total
+			for k, idx := range autoIndices {
+				share := 0.0
+				switch {
+				case total > 0:
+					share = extra * intrinsic[k] / total
+				default:
+					share = extra / float64(len(autoIndices))
+				}
+				widths[idx] = intrinsic[k] + share
+			}
+		default:
+			for k, idx := range autoIndices {
+				widths[idx] = intrinsic[k]
+			}
 		}
 	}
 
