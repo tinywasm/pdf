@@ -284,6 +284,11 @@ func (f *Fpdf) Error() error {
 	return f.err
 }
 
+// GetPageBreakTrigger returns the threshold used to trigger page breaks.
+func (f *Fpdf) GetPageBreakTrigger() float64 {
+	return f.pageBreakTrigger
+}
+
 // GetCellMargin returns the cell margin. This is the amount of space before
 // and after the text within a cell that's left blank, and is in units passed
 // to New(). It defaults to 1mm.
@@ -296,6 +301,20 @@ func (f *Fpdf) GetCellMargin() float64 {
 // New().
 func (f *Fpdf) SetCellMargin(margin float64) {
 	f.cMargin = margin
+}
+
+// SetPageSizeMM sets the default page size in millimetres. Must be called
+// before AddPage; has no effect once pages have been added.
+func (f *Fpdf) SetPageSizeMM(widthMM, heightMM float64) {
+	if f.page > 0 {
+		return
+	}
+	f.defPageSize = PageSize{Wd: widthMM * f.k, Ht: heightMM * f.k}
+	f.curPageSize = f.defPageSize
+	f.w = widthMM
+	f.h = heightMM
+	f.wPt = widthMM * f.k
+	f.hPt = heightMM * f.k
 }
 
 // SetDefaultCompression controls the default setting of the internal

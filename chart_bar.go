@@ -38,7 +38,7 @@ func (c *BarChart) AddBar(val float64, label string, col ...Color) *BarChart {
 	if len(col) > 0 {
 		color = col[0]
 	} else {
-		color = ColorRGB(100, 100, 100) // Default color
+		color = "#646464" // Default color
 	}
 	c.bars = append(c.bars, barData{
 		label: label,
@@ -98,7 +98,12 @@ func (c *BarChart) Draw() {
 		bx := x + 10 + float64(i)*barWidth // 10 offset from Y axis
 		by := y + c.height - h
 
-		c.doc.internal.SetFillColor(bar.color.R, bar.color.G, bar.color.B)
+		r, g, b, err := bar.color.parse()
+		if err == nil {
+			c.doc.internal.SetFillColor(r, g, b)
+		} else {
+			c.doc.internal.SetFillColor(100, 100, 100)
+		}
 		// Use simple rect
 		c.doc.internal.Rect(bx+2, by, barWidth-4, h, "F")
 
