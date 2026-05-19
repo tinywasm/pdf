@@ -53,7 +53,8 @@ func (c Color) parse() (r, g, b int, err error) {
 }
 
 type Theme struct {
-	Accent     Color
+	Accent     Color // color para texto de headers (H1, H2, H3)
+	Brand      Color // color de marca para elementos decorativos (líneas, bandas)
 	Header     Color
 	Gray       Color
 	Body       Color

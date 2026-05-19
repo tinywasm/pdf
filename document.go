@@ -334,7 +334,11 @@ func (d *Document) AddSeparator() *Document {
 	lMargin, _, rMargin, _ := d.internal.GetMargins()
 	width := w - lMargin - rMargin
 
-	d.drawLineH(x, y+2, width, "#000000", 0.2)
+	color := d.theme.Brand
+	if color == "" {
+		color = d.theme.Accent
+	}
+	d.drawLineH(x, y+2, width, color, 0.2)
 	d.internal.Ln(5)
 	return d
 }
