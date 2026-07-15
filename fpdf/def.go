@@ -1,5 +1,7 @@
 package fpdf
 
+import "github.com/tinywasm/model"
+
 import (
 	"bytes"
 	"encoding/binary"
@@ -538,12 +540,12 @@ type fontBoxType struct {
 	Xmin, Ymin, Xmax, Ymax int
 }
 
-func (f *fontBoxType) Schema() []fmt.Field {
-	return []fmt.Field{
-		{Name: "Xmin", Type: fmt.FieldInt},
-		{Name: "Ymin", Type: fmt.FieldInt},
-		{Name: "Xmax", Type: fmt.FieldInt},
-		{Name: "Ymax", Type: fmt.FieldInt},
+func (f *fontBoxType) Schema() []model.Field {
+	return []model.Field{
+		{Name: "Xmin", Type: model.FieldInt},
+		{Name: "Ymin", Type: model.FieldInt},
+		{Name: "Xmax", Type: model.FieldInt},
+		{Name: "Ymax", Type: model.FieldInt},
 	}
 }
 
@@ -632,16 +634,16 @@ type FontDescType struct {
 	MissingWidth int
 }
 
-func (f *FontDescType) Schema() []fmt.Field {
-	return []fmt.Field{
-		{Name: "Ascent", Type: fmt.FieldInt},
-		{Name: "Descent", Type: fmt.FieldInt},
-		{Name: "CapHeight", Type: fmt.FieldInt},
-		{Name: "Flags", Type: fmt.FieldInt},
-		{Name: "FontBBox", Type: fmt.FieldStruct},
-		{Name: "ItalicAngle", Type: fmt.FieldFloat},
-		{Name: "StemV", Type: fmt.FieldInt},
-		{Name: "MissingWidth", Type: fmt.FieldInt},
+func (f *FontDescType) Schema() []model.Field {
+	return []model.Field{
+		{Name: "Ascent", Type: model.FieldInt},
+		{Name: "Descent", Type: model.FieldInt},
+		{Name: "CapHeight", Type: model.FieldInt},
+		{Name: "Flags", Type: model.FieldInt},
+		{Name: "FontBBox", Type: model.FieldStruct},
+		{Name: "ItalicAngle", Type: model.FieldFloat},
+		{Name: "StemV", Type: model.FieldInt},
+		{Name: "MissingWidth", Type: model.FieldInt},
 	}
 }
 
@@ -668,23 +670,23 @@ type fontDefType struct {
 	usedRunes    map[int]int   // Array of used runes
 }
 
-func (f *fontDefType) Schema() []fmt.Field {
-	return []fmt.Field{
-		{Name: "Tp", Type: fmt.FieldText},
-		{Name: "Name", Type: fmt.FieldText},
-		{Name: "Desc", Type: fmt.FieldStruct},
-		{Name: "Up", Type: fmt.FieldInt},
-		{Name: "Ut", Type: fmt.FieldInt},
+func (f *fontDefType) Schema() []model.Field {
+	return []model.Field{
+		{Name: "Tp", Type: model.FieldText},
+		{Name: "Name", Type: model.FieldText},
+		{Name: "Desc", Type: model.FieldStruct},
+		{Name: "Up", Type: model.FieldInt},
+		{Name: "Ut", Type: model.FieldInt},
 		{Name: "Cw", Type: fmt.FieldIntSlice},
-		{Name: "Enc", Type: fmt.FieldText},
-		{Name: "Diff", Type: fmt.FieldText},
-		{Name: "File", Type: fmt.FieldText},
-		{Name: "Size1", Type: fmt.FieldInt},
-		{Name: "Size2", Type: fmt.FieldInt},
-		{Name: "OriginalSize", Type: fmt.FieldInt},
-		{Name: "N", Type: fmt.FieldInt},
-		{Name: "DiffN", Type: fmt.FieldInt},
-		{Name: "i", Type: fmt.FieldText},
+		{Name: "Enc", Type: model.FieldText},
+		{Name: "Diff", Type: model.FieldText},
+		{Name: "File", Type: model.FieldText},
+		{Name: "Size1", Type: model.FieldInt},
+		{Name: "Size2", Type: model.FieldInt},
+		{Name: "OriginalSize", Type: model.FieldInt},
+		{Name: "N", Type: model.FieldInt},
+		{Name: "DiffN", Type: model.FieldInt},
+		{Name: "i", Type: model.FieldText},
 	}
 }
 
