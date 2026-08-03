@@ -1,12 +1,11 @@
 package fpdf_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
-	tf "github.com/tinywasm/fmt"
+	"github.com/tinywasm/fmt"
 
 	fpdf "github.com/tinywasm/pdf/fpdf"
 )
@@ -170,7 +169,7 @@ func SummaryCompare(err error, fileStr string) {
 // ExampleFilename tests the Filename() and Summary() functions.
 func ExampleFilename() {
 	fileStr := Filename("example")
-	Summary(tf.Err("printer on fire"), fileStr)
+	Summary(fmt.Err("printer on fire"), fileStr)
 	// Output:
 	// printer on fire
 }

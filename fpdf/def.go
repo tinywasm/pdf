@@ -536,21 +536,56 @@ type encType struct {
 
 type encListType [256]encType
 
+
+var (
+	fontBoxDef = model.Definition{
+		Name:   "font_box",
+		Fields: model.Fields{
+			{Name: "Xmin", Type: model.Int()},
+			{Name: "Ymin", Type: model.Int()},
+			{Name: "Xmax", Type: model.Int()},
+			{Name: "Ymax", Type: model.Int()},
+		},
+	}
+
+	fontDescDef = model.Definition{
+		Name:   "font_desc",
+		Fields: model.Fields{
+			{Name: "Ascent", Type: model.Int()},
+			{Name: "Descent", Type: model.Int()},
+			{Name: "CapHeight", Type: model.Int()},
+			{Name: "Flags", Type: model.Int()},
+			{Name: "FontBBox", Type: model.Struct(&fontBoxDef)},
+			{Name: "ItalicAngle", Type: model.Float()},
+			{Name: "StemV", Type: model.Int()},
+			{Name: "MissingWidth", Type: model.Int()},
+		},
+	}
+)
 type fontBoxType struct {
 	Xmin, Ymin, Xmax, Ymax int
 }
 
 func (f *fontBoxType) Schema() []model.Field {
 	return []model.Field{
-		{Name: "Xmin", Type: model.FieldInt},
-		{Name: "Ymin", Type: model.FieldInt},
-		{Name: "Xmax", Type: model.FieldInt},
-		{Name: "Ymax", Type: model.FieldInt},
+		{Name: "Xmin", Type: model.Int()},
+		{Name: "Ymin", Type: model.Int()},
+		{Name: "Xmax", Type: model.Int()},
+		{Name: "Ymax", Type: model.Int()},
 	}
 }
 
 func (f *fontBoxType) Pointers() []any {
 	return []any{&f.Xmin, &f.Ymin, &f.Xmax, &f.Ymax}
+}
+
+func (f *fontBoxType) IsNil() bool { return f == nil }
+
+func (f *fontBoxType) DecodeFields(r model.FieldReader) {
+	if v, ok := r.Int("Xmin"); ok  { f.Xmin = int(v) }
+	if v, ok := r.Int("Ymin"); ok  { f.Ymin = int(v) }
+	if v, ok := r.Int("Xmax"); ok  { f.Xmax = int(v) }
+	if v, ok := r.Int("Ymax"); ok  { f.Ymax = int(v) }
 }
 
 // Font flags for FontDescType.Flags as defined in the pdf specification.
@@ -636,19 +671,32 @@ type FontDescType struct {
 
 func (f *FontDescType) Schema() []model.Field {
 	return []model.Field{
-		{Name: "Ascent", Type: model.FieldInt},
-		{Name: "Descent", Type: model.FieldInt},
-		{Name: "CapHeight", Type: model.FieldInt},
-		{Name: "Flags", Type: model.FieldInt},
-		{Name: "FontBBox", Type: model.FieldStruct},
-		{Name: "ItalicAngle", Type: model.FieldFloat},
-		{Name: "StemV", Type: model.FieldInt},
-		{Name: "MissingWidth", Type: model.FieldInt},
+		{Name: "Ascent", Type: model.Int()},
+		{Name: "Descent", Type: model.Int()},
+		{Name: "CapHeight", Type: model.Int()},
+		{Name: "Flags", Type: model.Int()},
+		{Name: "FontBBox", Type: model.Struct(&fontBoxDef)},
+		{Name: "ItalicAngle", Type: model.Float()},
+		{Name: "StemV", Type: model.Int()},
+		{Name: "MissingWidth", Type: model.Int()},
 	}
 }
 
 func (f *FontDescType) Pointers() []any {
 	return []any{&f.Ascent, &f.Descent, &f.CapHeight, &f.Flags, &f.FontBBox, &f.ItalicAngle, &f.StemV, &f.MissingWidth}
+}
+
+func (f *FontDescType) IsNil() bool { return f == nil }
+
+func (f *FontDescType) DecodeFields(r model.FieldReader) {
+	if v, ok := r.Int("Ascent"); ok      { f.Ascent = int(v) }
+	if v, ok := r.Int("Descent"); ok     { f.Descent = int(v) }
+	if v, ok := r.Int("CapHeight"); ok   { f.CapHeight = int(v) }
+	if v, ok := r.Int("Flags"); ok       { f.Flags = int(v) }
+	r.Object("FontBBox", &f.FontBBox)
+	if v, ok := r.Int("ItalicAngle"); ok  { f.ItalicAngle = int(v) }
+	if v, ok := r.Int("StemV"); ok       { f.StemV = int(v) }
+	if v, ok := r.Int("MissingWidth"); ok { f.MissingWidth = int(v) }
 }
 
 type fontDefType struct {
@@ -672,26 +720,52 @@ type fontDefType struct {
 
 func (f *fontDefType) Schema() []model.Field {
 	return []model.Field{
-		{Name: "Tp", Type: model.FieldText},
-		{Name: "Name", Type: model.FieldText},
-		{Name: "Desc", Type: model.FieldStruct},
-		{Name: "Up", Type: model.FieldInt},
-		{Name: "Ut", Type: model.FieldInt},
-		{Name: "Cw", Type: fmt.FieldIntSlice},
-		{Name: "Enc", Type: model.FieldText},
-		{Name: "Diff", Type: model.FieldText},
-		{Name: "File", Type: model.FieldText},
-		{Name: "Size1", Type: model.FieldInt},
-		{Name: "Size2", Type: model.FieldInt},
-		{Name: "OriginalSize", Type: model.FieldInt},
-		{Name: "N", Type: model.FieldInt},
-		{Name: "DiffN", Type: model.FieldInt},
-		{Name: "i", Type: model.FieldText},
+		{Name: "Tp", Type: model.Text()},
+		{Name: "Name", Type: model.Text()},
+		{Name: "Desc", Type: model.Struct(&fontDescDef)},
+		{Name: "Up", Type: model.Int()},
+		{Name: "Ut", Type: model.Int()},
+		{Name: "Cw", Type: model.IntSlice()},
+		{Name: "Enc", Type: model.Text()},
+		{Name: "Diff", Type: model.Text()},
+		{Name: "File", Type: model.Text()},
+		{Name: "Size1", Type: model.Int()},
+		{Name: "Size2", Type: model.Int()},
+		{Name: "OriginalSize", Type: model.Int()},
+		{Name: "N", Type: model.Int()},
+		{Name: "DiffN", Type: model.Int()},
+		{Name: "i", Type: model.Text()},
 	}
 }
 
 func (f *fontDefType) Pointers() []any {
 	return []any{&f.Tp, &f.Name, &f.Desc, &f.Up, &f.Ut, &f.Cw, &f.Enc, &f.Diff, &f.File, &f.Size1, &f.Size2, &f.OriginalSize, &f.N, &f.DiffN, &f.i}
+}
+
+func (f *fontDefType) IsNil() bool { return f == nil }
+
+func (f *fontDefType) DecodeFields(r model.FieldReader) {
+	if v, ok := r.String("Tp"); ok   { f.Tp = v }
+	if v, ok := r.String("Name"); ok { f.Name = v }
+	r.Object("Desc", &f.Desc)
+	if v, ok := r.Int("Up"); ok      { f.Up = int(v) }
+	if v, ok := r.Int("Ut"); ok      { f.Ut = int(v) }
+	if ar, ok := r.Array("Cw"); ok {
+		n := ar.Len()
+		f.Cw = make([]int, n)
+		for i := 0; i < n; i++ {
+			f.Cw[i] = int(ar.Int(i))
+		}
+	}
+	if v, ok := r.String("Enc"); ok  { f.Enc = v }
+	if v, ok := r.String("Diff"); ok { f.Diff = v }
+	if v, ok := r.String("File"); ok { f.File = v }
+	if v, ok := r.Int("Size1"); ok        { f.Size1 = int(v) }
+	if v, ok := r.Int("Size2"); ok        { f.Size2 = int(v) }
+	if v, ok := r.Int("OriginalSize"); ok { f.OriginalSize = int(v) }
+	if v, ok := r.Int("N"); ok            { f.N = int(v) }
+	if v, ok := r.Int("DiffN"); ok        { f.DiffN = int(v) }
+	if v, ok := r.String("i"); ok  { f.i = v }
 }
 
 

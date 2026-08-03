@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"github.com/tinywasm/fetch"
 	. "github.com/tinywasm/fmt"
+	"github.com/tinywasm/fmt/lang"
 	"syscall/js"
 )
 
@@ -16,7 +17,7 @@ func (d *Document) initIO() {
 	d.logger = func(message ...any) {
 		console := js.Global().Get("console")
 		if !console.IsUndefined() {
-			console.Call("log", Translate(message...))
+			console.Call("log", lang.Translate(message...))
 		}
 	}
 }
