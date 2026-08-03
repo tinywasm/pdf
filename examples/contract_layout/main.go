@@ -5,15 +5,20 @@ import (
 )
 
 func main() {
+	tf, err := pdf.LoadTypeface(
+		"../../fpdf/fonts/Roboto-Regular.ttf",
+		"../../fpdf/fonts/Roboto-Bold.ttf",
+		"../../fpdf/fonts/Roboto-Italic.ttf",
+		"../../fpdf/fonts/Roboto-BoldItalic.ttf",
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	doc := pdf.NewDocument(
+		tf,
 		pdf.WithLogger(func(args ...any) { /* … */ }),
 	)
-	// doc.RegisterImage("logo", "examples/contract_layout/logo.png")
-	doc.Load(func(err error) {
-		if err != nil {
-			panic(err)
-		}
-	})
 
 	theme := pdf.DefaultTheme
 	theme.Accent = "#1E3C78"
@@ -28,7 +33,7 @@ func main() {
 		Background(theme.Header).
 		BorderBottom(0.6, theme.Accent).
 		Row(
-			"LOGO", // pdf.Image("logo").Width(40),
+			"LOGO", // pdf.Image(logoID).Width(40),
 			pdf.Cell(
 				pdf.Text("EXAMPLE DOCUMENT TITLE").Bold().Size(14),
 				pdf.Text("Subtitle — descriptive line").Size(9),

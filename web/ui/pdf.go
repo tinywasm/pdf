@@ -39,7 +39,7 @@ func GeneratePDF() {
 	Doc.AddHeader1("Contenido del documento")
 	Doc.SpaceBefore(5)
 
-	Doc.SetFont("Arial", 12)
+	Doc.SetSize(12)
 	for j := 1; j <= 40; j++ {
 		Doc.AddText(fmt.Sprintf("Línea de contenido número %d", j)).Draw()
 	}

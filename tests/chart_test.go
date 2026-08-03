@@ -1,13 +1,27 @@
 package pdf_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tinywasm/pdf"
 )
 
 func TestCharts(t *testing.T) {
-	doc := pdf.NewDocument()
+	const out = "test_charts.pdf"
+	_ = os.Remove(out)
+
+	tf, err := pdf.LoadTypeface(
+		fontDir+"Roboto-Regular.ttf",
+		fontDir+"Roboto-Bold.ttf",
+		fontDir+"Roboto-Italic.ttf",
+		fontDir+"Roboto-BoldItalic.ttf",
+	)
+	if err != nil {
+		t.Fatalf("loading typeface: %v", err)
+	}
+
+	doc := pdf.NewDocument(tf)
 	doc.AddPage()
 
 	doc.AddHeader1("Chart Examples")
@@ -44,8 +58,16 @@ func TestCharts(t *testing.T) {
 		AddSlice("C", 30, "#0000FF").
 		Draw()
 
-	err := doc.WritePdf("test_charts.pdf")
+	writeErr := doc.WritePdf(out)
+	if writeErr != nil {
+		t.Fatalf("WritePdf failed: %v", writeErr)
+	}
+
+	st, err := os.Stat(out)
 	if err != nil {
-		t.Errorf("WritePdf failed: %v", err)
+		t.Fatalf("stat %s: %v", out, err)
+	}
+	if st.Size() == 0 {
+		t.Fatalf("PDF %s is empty", out)
 	}
 }

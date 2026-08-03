@@ -8,10 +8,21 @@ import (
 )
 
 func main() {
-	// Crear instancia de Document
-	doc := pdf.NewDocument()
+	// Cargar tipografía para el cliente Web (WASM)
+	tf, err := pdf.LoadTypeface(
+		"fonts/Roboto-Regular.ttf",
+		"fonts/Roboto-Bold.ttf",
+		"fonts/Roboto-Italic.ttf",
+		"fonts/Roboto-BoldItalic.ttf",
+	)
+	if err != nil {
+		panic("Error cargando tipografía Roboto: " + err.Error())
+	}
 
-	doc.Log("Document inicializado...")
+	// Crear instancia de Document con la tipografía cargada
+	doc := pdf.NewDocument(tf)
+
+	doc.Log("Document inicializado con tipografía Roboto...")
 
 	// Configurar UI
 	ui.Setup(doc)

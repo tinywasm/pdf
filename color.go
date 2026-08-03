@@ -58,7 +58,6 @@ type Theme struct {
 	Header     Color
 	Gray       Color
 	Body       Color
-	FontFamily string
 	Sizes      struct {
 		H1, H2, H3, Body, Small float64
 	}
@@ -86,7 +85,6 @@ var DefaultTheme = Theme{
 	Header:     "#F0F4FA",
 	Gray:       "#646464",
 	Body:       "#000000",
-	FontFamily: "Arial",
 	Sizes: struct {
 		H1, H2, H3, Body, Small float64
 	}{

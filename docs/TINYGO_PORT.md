@@ -314,3 +314,12 @@ tinygo build -target arduino ./cmd/example
 - Implemented a new Flow-First Layout API centered around `TableBuilder`, `Element`, and `Theme`.
 - Renamed all absolute positioning methods to be package-private to encourage flow-mode usage.
 - Standardized color handling using the `Color` hex-string alias.
+
+### Update: Type-Safe Typography and Font System Simplification
+- Completed implementation of `docs/PLAN.md` to close typography and image resource holes in the API.
+- Introduced `Typeface` and `TypefaceID` to represent and select fonts, completely eliminating untyped strings from font selection and the possibility of "undefined font" runtime errors.
+- Eliminated all legacy Latin-1 standard font definitions (such as standard Times, Helvetica, Courier) and the `coreFonts` fallback map, forcing all text rendering to be explicitly UTF-8 based and type-safe.
+- Removed legacy assets (AFM, JSON, PFB, Z, MAP, OTF, Arial) from `fpdf/fonts/` to reduce code size and simplify assets.
+- Implemented `ImageID` for type-safe image references, making images loaded immediately on `RegisterImage`.
+- Updated charts, tables, text elements, and tests to use `doc.getActiveFontName()`.
+- Updated all test deliverables to perform stat/size checks to prevent Go's test runner caching.

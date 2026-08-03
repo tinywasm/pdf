@@ -1,13 +1,27 @@
 package pdf_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tinywasm/pdf"
 )
 
 func TestTable(t *testing.T) {
-	doc := pdf.NewDocument()
+	const out = "test_table.pdf"
+	_ = os.Remove(out)
+
+	tf, err := pdf.LoadTypeface(
+		fontDir+"Roboto-Regular.ttf",
+		fontDir+"Roboto-Bold.ttf",
+		fontDir+"Roboto-Italic.ttf",
+		fontDir+"Roboto-BoldItalic.ttf",
+	)
+	if err != nil {
+		t.Fatalf("loading typeface: %v", err)
+	}
+
+	doc := pdf.NewDocument(tf)
 	doc.AddPage()
 
 	doc.AddTable().
@@ -18,8 +32,16 @@ func TestTable(t *testing.T) {
 		Row("003", "Widget C", "5.99").
 		Draw()
 
-	err := doc.WritePdf("test_table.pdf")
+	writeErr := doc.WritePdf(out)
+	if writeErr != nil {
+		t.Fatalf("WritePdf failed: %v", writeErr)
+	}
+
+	st, err := os.Stat(out)
 	if err != nil {
-		t.Errorf("WritePdf failed: %v", err)
+		t.Fatalf("stat %s: %v", out, err)
+	}
+	if st.Size() == 0 {
+		t.Fatalf("PDF %s is empty", out)
 	}
 }
