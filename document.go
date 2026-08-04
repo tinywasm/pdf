@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/tinywasm/color"
 	. "github.com/tinywasm/fmt"
+	"github.com/tinywasm/font"
 	"github.com/tinywasm/pdf/fpdf"
 )
 
@@ -24,23 +26,56 @@ type imageEntry struct {
 	path string
 }
 
-func LoadTypeface(regular, bold, italic, boldItalic string) (Typeface, error) {
-	reg, err := readFile(regular)
+// LoadDeclared loads the four faces named by the font.Declaration.
+// The .ttf extension is appended by this package.
+func LoadDeclared(d font.Declaration) (Typeface, error) {
+	dir := d.Dir()
+	if dir != "" && dir[len(dir)-1] != '/' {
+		dir += "/"
+	}
+	f := d.Family()
+
+	regPath := dir + f.Face(font.Regular) + ".ttf"
+	reg, err := readFile(regPath)
+	if err != nil {
+		// Fallback to -Regular
+		regPathAlt := dir + string(f) + "-Regular.ttf"
+		reg, err = readFile(regPathAlt)
+		if err != nil {
+			return Typeface{}, err
+		}
+	}
+
+	bldPath := dir + f.Face(font.Bold) + ".ttf"
+	bld, err := readFile(bldPath)
 	if err != nil {
 		return Typeface{}, err
 	}
-	bld, err := readFile(bold)
+
+	itPath := dir + f.Face(font.Italic) + ".ttf"
+	it, err := readFile(itPath)
 	if err != nil {
-		return Typeface{}, err
+		// Fallback to Regular for fonts like DroidSans that don't have italics
+		it, err = readFile(regPath)
+		if err != nil {
+			itPathAlt := dir + string(f) + "-Regular.ttf"
+			it, err = readFile(itPathAlt)
+			if err != nil {
+				return Typeface{}, err
+			}
+		}
 	}
-	it, err := readFile(italic)
+
+	biPath := dir + f.Face(font.BoldItalic) + ".ttf"
+	bi, err := readFile(biPath)
 	if err != nil {
-		return Typeface{}, err
+		// Fallback to Bold for fonts like DroidSans that don't have bold italic
+		bi, err = readFile(bldPath)
+		if err != nil {
+			return Typeface{}, err
+		}
 	}
-	bi, err := readFile(boldItalic)
-	if err != nil {
-		return Typeface{}, err
-	}
+
 	return Typeface{
 		regularData:    reg,
 		boldData:       bld,
@@ -329,8 +364,8 @@ func (d *Document) AddSeparator() *Document {
 	return d
 }
 
-func (d *Document) drawLineH(x, y, width float64, color Color, thickness float64) {
-	r, g, b, err := color.parse()
+func (d *Document) drawLineH(x, y, width float64, c color.Color, thickness float64) {
+	r, g, b, err := c.RGB()
 	if err != nil {
 		d.addError(err)
 		return
@@ -371,8 +406,8 @@ func (d *Document) getCursorX() float64 {
 	return d.internal.GetX()
 }
 
-func (d *Document) drawFilledRect(x, y, w, h float64, color Color) {
-	r, g, b, err := color.parse()
+func (d *Document) drawFilledRect(x, y, w, h float64, c color.Color) {
+	r, g, b, err := c.RGB()
 	if err != nil {
 		d.addError(err)
 		return
@@ -382,8 +417,8 @@ func (d *Document) drawFilledRect(x, y, w, h float64, color Color) {
 	d.internal.SetFillColor(255, 255, 255)
 }
 
-func (d *Document) setTextColor(color Color) {
-	r, g, b, err := color.parse()
+func (d *Document) setTextColor(c color.Color) {
+	r, g, b, err := c.RGB()
 	if err != nil {
 		d.addError(err)
 		return
@@ -496,8 +531,8 @@ func (pf *PageFooter) WithPageTotal(align string) *PageFooter {
 // --- Styles ---
 
 type Style struct {
-	FillColor Color
-	TextColor Color
+	FillColor color.Color
+	TextColor color.Color
 	Font      string // "B", "I", ""
 	FontSize  float64
 }

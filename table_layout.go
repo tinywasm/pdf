@@ -1,6 +1,7 @@
 package pdf
 
 import (
+	"github.com/tinywasm/color"
 	. "github.com/tinywasm/fmt"
 )
 
@@ -8,10 +9,10 @@ type TableBuilder struct {
 	doc           *Document
 	colWidths     []string // "30%", "auto", "40mm"
 	rows          [][]*CellElement
-	bg            Color
+	bg            color.Color
 	borderBottom struct {
 		width float64
-		color Color
+		color color.Color
 	}
 	keepTogether bool
 }
@@ -51,12 +52,12 @@ func (t *TableBuilder) Row(items ...any) *TableBuilder {
 	return t
 }
 
-func (t *TableBuilder) Background(c Color) *TableBuilder {
+func (t *TableBuilder) Background(c color.Color) *TableBuilder {
 	t.bg = c
 	return t
 }
 
-func (t *TableBuilder) BorderBottom(width float64, c Color) *TableBuilder {
+func (t *TableBuilder) BorderBottom(width float64, c color.Color) *TableBuilder {
 	t.borderBottom.width = width
 	t.borderBottom.color = c
 	return t

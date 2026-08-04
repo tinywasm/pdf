@@ -1,16 +1,13 @@
 package main
 
 import (
+	"github.com/tinywasm/font"
 	"github.com/tinywasm/pdf"
 )
 
 func main() {
-	tf, err := pdf.LoadTypeface(
-		"../../fpdf/fonts/Roboto-Regular.ttf",
-		"../../fpdf/fonts/Roboto-Bold.ttf",
-		"../../fpdf/fonts/Roboto-Italic.ttf",
-		"../../fpdf/fonts/Roboto-BoldItalic.ttf",
-	)
+	d := font.Declare("Roboto", "../../fpdf/fonts/")
+	tf, err := pdf.LoadDeclared(d)
 	if err != nil {
 		panic(err)
 	}

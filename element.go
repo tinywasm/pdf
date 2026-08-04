@@ -1,6 +1,7 @@
 package pdf
 
 import (
+	"github.com/tinywasm/color"
 	. "github.com/tinywasm/fmt"
 )
 
@@ -17,7 +18,7 @@ type TextElement struct {
 	bold    bool
 	italic  bool
 	size    float64
-	color   Color
+	color   color.Color
 	align   string // L, C, R, J
 }
 
@@ -74,7 +75,7 @@ func (t *TextElement) Size(pt float64) *TextElement {
 	return t
 }
 
-func (t *TextElement) Color(c Color) *TextElement {
+func (t *TextElement) Color(c color.Color) *TextElement {
 	t.color = c
 	return t
 }
@@ -276,7 +277,7 @@ func (i *ImageElement) measure(doc *Document, w float64) (float64, float64) {
 // Line element.
 type LineElement struct {
 	width     float64
-	color     Color
+	color     color.Color
 	thickness float64
 }
 
@@ -289,7 +290,7 @@ func (l *LineElement) Width(mm float64) *LineElement {
 	return l
 }
 
-func (l *LineElement) Color(c Color) *LineElement {
+func (l *LineElement) Color(c color.Color) *LineElement {
 	l.color = c
 	return l
 }
@@ -325,10 +326,10 @@ func (l *LineElement) measure(doc *Document, w float64) (float64, float64) {
 type CellElement struct {
 	children []Element
 	padding  [4]float64 // top, right, bottom, left
-	bg       Color
+	bg       color.Color
 	border   struct {
 		width float64
-		color Color
+		color color.Color
 		sides string // "LTRB"
 	}
 	span struct {
@@ -351,15 +352,15 @@ func (c *CellElement) Padding(top, right, bottom, left float64) *CellElement {
 	return c
 }
 
-func (c *CellElement) Background(color Color) *CellElement {
-	c.bg = color
+func (c *CellElement) Background(col color.Color) *CellElement {
+	c.bg = col
 	return c
 }
 
-func (c *CellElement) Border(sides string, width float64, color Color) *CellElement {
+func (c *CellElement) Border(sides string, width float64, col color.Color) *CellElement {
 	c.border.sides = sides
 	c.border.width = width
-	c.border.color = color
+	c.border.color = col
 	return c
 }
 
@@ -412,7 +413,7 @@ func (c *CellElement) drawWithHeight(doc *Document, x, y, w, h float64) float64 
 
 	// Border - simple implementation
 	if c.border.width > 0 {
-		r, g, b, _ := c.border.color.parse()
+		r, g, b, _ := c.border.color.RGB()
 		doc.internal.SetDrawColor(r, g, b)
 		doc.internal.SetLineWidth(c.border.width)
 		if c.border.sides == "1" || c.border.sides == "" {

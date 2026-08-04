@@ -1,63 +1,15 @@
 package pdf
 
 import (
-	. "github.com/tinywasm/fmt"
+	"github.com/tinywasm/color"
 )
 
-// Color is a CSS-style hex string, e.g. "#RRGGBB" or "#RGB".
-type Color string
-
-// parse converts the hex string to (r, g, b) integers.
-func (c Color) parse() (r, g, b int, err error) {
-	s := string(c)
-	if s == "" {
-		return 0, 0, 0, nil
-	}
-	if s[0] == '#' {
-		s = s[1:]
-	}
-
-	if len(s) == 3 {
-		r3, err := Convert(s[0:1] + s[0:1]).Int(16)
-		if err != nil {
-			return 0, 0, 0, Errf("color", string(c), "invalid")
-		}
-		g3, err := Convert(s[1:2] + s[1:2]).Int(16)
-		if err != nil {
-			return 0, 0, 0, Errf("color", string(c), "invalid")
-		}
-		b3, err := Convert(s[2:3] + s[2:3]).Int(16)
-		if err != nil {
-			return 0, 0, 0, Errf("color", string(c), "invalid")
-		}
-		return r3, g3, b3, nil
-	}
-
-	if len(s) == 6 {
-		r6, err := Convert(s[0:2]).Int(16)
-		if err != nil {
-			return 0, 0, 0, Errf("color", string(c), "invalid")
-		}
-		g6, err := Convert(s[2:4]).Int(16)
-		if err != nil {
-			return 0, 0, 0, Errf("color", string(c), "invalid")
-		}
-		b6, err := Convert(s[4:6]).Int(16)
-		if err != nil {
-			return 0, 0, 0, Errf("color", string(c), "invalid")
-		}
-		return r6, g6, b6, nil
-	}
-
-	return 0, 0, 0, Errf("color", string(c), "invalid")
-}
-
 type Theme struct {
-	Accent     Color // color para texto de headers (H1, H2, H3)
-	Brand      Color // color de marca para elementos decorativos (líneas, bandas)
-	Header     Color
-	Gray       Color
-	Body       Color
+	Accent     color.Color // color para texto de headers (H1, H2, H3)
+	Brand      color.Color // color de marca para elementos decorativos (líneas, bandas)
+	Header     color.Color
+	Gray       color.Color
+	Body       color.Color
 	Sizes      struct {
 		H1, H2, H3, Body, Small float64
 	}
