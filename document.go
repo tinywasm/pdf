@@ -35,45 +35,30 @@ func LoadDeclared(d font.Declaration) (Typeface, error) {
 	}
 	f := d.Family()
 
-	regPath := dir + f.Face(font.Regular) + ".ttf"
-	reg, err := readFile(regPath)
-	if err != nil {
-		// Fallback to -Regular
-		regPathAlt := dir + string(f) + "-Regular.ttf"
-		reg, err = readFile(regPathAlt)
+	load := func(style font.Style) ([]byte, error) {
+		path := dir + f.Face(style) + ".ttf"
+		data, err := readFile(path)
 		if err != nil {
-			return Typeface{}, err
+			return nil, Errf("face %s missing: %s: %v", f.Face(style), path, err)
 		}
+		return data, nil
 	}
 
-	bldPath := dir + f.Face(font.Bold) + ".ttf"
-	bld, err := readFile(bldPath)
+	reg, err := load(font.Regular)
 	if err != nil {
 		return Typeface{}, err
 	}
-
-	itPath := dir + f.Face(font.Italic) + ".ttf"
-	it, err := readFile(itPath)
+	bld, err := load(font.Bold)
 	if err != nil {
-		// Fallback to Regular for fonts like DroidSans that don't have italics
-		it, err = readFile(regPath)
-		if err != nil {
-			itPathAlt := dir + string(f) + "-Regular.ttf"
-			it, err = readFile(itPathAlt)
-			if err != nil {
-				return Typeface{}, err
-			}
-		}
+		return Typeface{}, err
 	}
-
-	biPath := dir + f.Face(font.BoldItalic) + ".ttf"
-	bi, err := readFile(biPath)
+	it, err := load(font.Italic)
 	if err != nil {
-		// Fallback to Bold for fonts like DroidSans that don't have bold italic
-		bi, err = readFile(bldPath)
-		if err != nil {
-			return Typeface{}, err
-		}
+		return Typeface{}, err
+	}
+	bi, err := load(font.BoldItalic)
+	if err != nil {
+		return Typeface{}, err
 	}
 
 	return Typeface{

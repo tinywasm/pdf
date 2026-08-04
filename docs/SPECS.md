@@ -3,7 +3,7 @@
 ## 1. Font System
 - `LoadDeclared(font.Declaration)` replaces the legacy `LoadTypeface` string-based API.
 - All font loading must occur via `github.com/tinywasm/font` declarations, avoiding hardcoded string names in high-level calls.
-- Supports automatic style fallbacks (e.g. Regular face fallback when Italic face is missing, or Bold face fallback when Bold Italic face is missing).
+- The four faces are mandatory: `LoadDeclared` fails with an error naming the missing face and its path when any is absent.
 
 ## 2. Color System
 - Color management is fully unified under `github.com/tinywasm/color`.

@@ -2,6 +2,7 @@ package pdf_test
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/tinywasm/font"
@@ -28,11 +29,6 @@ var families = []testFamily{
 		name: "Inter", regular: "Inter-Regular.ttf", bold: "Inter-Bold.ttf",
 		italic: "Inter-Italic.ttf", boldItal: "Inter-BoldItalic.ttf",
 		note: "subset latino, cursivas reales",
-	},
-	{
-		name: "DroidSans", regular: "DroidSans.ttf", bold: "DroidSans-Bold.ttf",
-		italic: "DroidSans.ttf", boldItal: "DroidSans-Bold.ttf",
-		note: "sin cursiva real (apunta a la recta) y sin simbolo €",
 	},
 }
 
@@ -110,6 +106,62 @@ func TestFonts_AllStyles(t *testing.T) {
 		t.Fatalf("PDF %s is empty", out)
 	}
 	t.Logf("escrito %s (%d bytes) — abrelo para ver el resultado", out, st.Size())
+}
+
+// TestFonts_MissingFaceErrors is the regression test for the removed silent
+// fallbacks: LoadDeclared must fail — naming the missing face and its path —
+// instead of substituting another face and producing a document without
+// italics.
+func TestFonts_MissingFaceErrors(t *testing.T) {
+	copy := func(dstDir, name string) {
+		src, err := os.ReadFile(fontDir + name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		if err := os.WriteFile(dstDir+"/"+name, src, 0644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	cases := []struct {
+		name    string
+		provide []string
+		missing string // full path that must appear in the error
+	}{
+		{
+			name:    "missing italic",
+			provide: []string{"Roboto-Regular.ttf", "Roboto-Bold.ttf"},
+			missing: "Roboto-Italic.ttf",
+		},
+		{
+			name:    "missing bold italic",
+			provide: []string{"Roboto-Regular.ttf", "Roboto-Bold.ttf", "Roboto-Italic.ttf"},
+			missing: "Roboto-BoldItalic.ttf",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, err := os.MkdirTemp("", "pdf-fonts-*")
+			if err != nil {
+				t.Fatalf("MkdirTemp: %v", err)
+			}
+			defer os.RemoveAll(dir)
+
+			for _, f := range tc.provide {
+				copy(dir, f)
+			}
+
+			d := font.Declare("Roboto", dir)
+			_, err = pdf.LoadDeclared(d)
+			if err == nil {
+				t.Fatalf("LoadDeclared succeeded, want error for missing %s", tc.missing)
+			}
+			if !strings.Contains(err.Error(), tc.missing) {
+				t.Fatalf("error %q does not name the missing face %s", err, tc.missing)
+			}
+		})
+	}
 }
 
 // TestFonts_SubsetsAreSmallerThanDroid is the size claim, checked rather than
