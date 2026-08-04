@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/tinywasm/font"
 	"github.com/tinywasm/pdf"
 )
 
@@ -11,12 +12,8 @@ func TestTable(t *testing.T) {
 	const out = "test_table.pdf"
 	_ = os.Remove(out)
 
-	tf, err := pdf.LoadTypeface(
-		fontDir+"Roboto-Regular.ttf",
-		fontDir+"Roboto-Bold.ttf",
-		fontDir+"Roboto-Italic.ttf",
-		fontDir+"Roboto-BoldItalic.ttf",
-	)
+	d := font.Declare("Roboto", fontDir)
+	tf, err := pdf.LoadDeclared(d)
 	if err != nil {
 		t.Fatalf("loading typeface: %v", err)
 	}

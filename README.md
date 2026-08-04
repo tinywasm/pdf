@@ -14,7 +14,20 @@ TinyPDF now features a declarative, flow-first API that prioritizes composition 
 ### Example
 
 ```go
-doc := pdf.NewDocument()
+import (
+	"github.com/tinywasm/font"
+	"github.com/tinywasm/pdf"
+)
+
+// Declare the font family and path
+d := font.Declare("Roboto", "fonts/")
+tf, err := pdf.LoadDeclared(d)
+if err != nil {
+	panic(err)
+}
+
+// Create a new document with the typeface
+doc := pdf.NewDocument(tf)
 doc.AddPage()
 
 doc.AddTable().

@@ -1,0 +1,28 @@
+# ARCHITECTURE — Ecosistema TinyPDF
+
+```
+                   +------------------------+
+                   |   github.com/tinywasm  |
+                   |      (color, font)     |
+                   +-----------+------------+
+                               |
+                               v
+                   +------------------------+
+                   |   github.com/tinywasm  |
+                   |         (pdf)          |
+                   +-----------+------------+
+                               |
+                               | (Implements Canvas)
+                               v
+                   +------------------------+
+                   |   github.com/tinywasm  |
+                   |        (chart)         |
+                   +------------------------+
+```
+
+## Principios de Diseño
+
+1. **Identidad Tipográfica Única:** La identidad tipográfica la posee y gestiona `tinywasm/font`. Este módulo únicamente consume y activa esas tipografías, garantizando consistencia completa entre Web y PDF.
+2. **Modularidad y Responsabilidades Separadas:** El motor de PDF se enfoca exclusivamente en la maquetación y generación del documento (`Document` y `TableBuilder`). Los gráficos se delegan al módulo externo `tinywasm/chart`.
+3. **Superficie de Dibujo Abierta (`Canvas`):** Para permitir extensiones gráficas sin acoplar dependencias pesadas, `Document` expone e implementa un contrato `Canvas` limpio y tipado para que utilidades externas puedan dibujar de forma controlada.
+4. **Cero Residuos de Formatos Heredados:** Se han depurado por completo los cargadores de fuentes Type1/AFM obsoletos, maximizando la eficiencia de compilación WebAssembly (WASM).

@@ -11,4 +11,8 @@ require (
 
 require github.com/tinywasm/unixid v0.2.23
 
-require github.com/tinywasm/model v0.1.2
+require (
+	github.com/tinywasm/color v0.1.1
+	github.com/tinywasm/font v0.0.3
+	github.com/tinywasm/model v0.1.2
+)

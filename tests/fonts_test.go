@@ -4,6 +4,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/tinywasm/font"
 	"github.com/tinywasm/pdf"
 )
 
@@ -29,7 +30,7 @@ var families = []testFamily{
 		note: "subset latino, cursivas reales",
 	},
 	{
-		name: "Droid", regular: "DroidSans.ttf", bold: "DroidSans-Bold.ttf",
+		name: "DroidSans", regular: "DroidSans.ttf", bold: "DroidSans-Bold.ttf",
 		italic: "DroidSans.ttf", boldItal: "DroidSans-Bold.ttf",
 		note: "sin cursiva real (apunta a la recta) y sin simbolo €",
 	},
@@ -44,12 +45,8 @@ const sample = `Señor Muñoz — ítem “café orgánico” ¿1.250 €? ¡Sí
 // PDF so the faces can be compared side by side. Open tests/test_fonts.pdf.
 func TestFonts_AllStyles(t *testing.T) {
 	// First load primary font
-	primaryTf, err := pdf.LoadTypeface(
-		fontDir+families[0].regular,
-		fontDir+families[0].bold,
-		fontDir+families[0].italic,
-		fontDir+families[0].boldItal,
-	)
+	d0 := font.Declare(font.Family(families[0].name), fontDir)
+	primaryTf, err := pdf.LoadDeclared(d0)
 	if err != nil {
 		t.Fatalf("loading primary typeface: %v", err)
 	}
@@ -70,12 +67,8 @@ func TestFonts_AllStyles(t *testing.T) {
 	// Register other fonts
 	for i := 1; i < len(families); i++ {
 		f := families[i]
-		tf, err := pdf.LoadTypeface(
-			fontDir+f.regular,
-			fontDir+f.bold,
-			fontDir+f.italic,
-			fontDir+f.boldItal,
-		)
+		d := font.Declare(font.Family(f.name), fontDir)
+		tf, err := pdf.LoadDeclared(d)
 		if err != nil {
 			t.Fatalf("loading typeface %s: %v", f.name, err)
 		}

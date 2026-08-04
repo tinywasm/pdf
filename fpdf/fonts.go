@@ -10,24 +10,6 @@ import (
 	. "github.com/tinywasm/fmt"
 )
 
-// AddFontFromBytes imports a TrueType, OpenType or Type1 font from static
-// bytes within the executable and makes it available for use in the generated
-// document.
-//
-// family specifies the font family. The name can be chosen arbitrarily. If it
-// is a standard family name, it will override the corresponding font. This
-// string is used to subsequently set the font with the SetFont method.
-//
-// style specifies the font style. Acceptable values are (case insensitive) the
-// empty string for regular style, "B" for bold, "I" for italic, or "BI" or
-// "IB" for bold and italic combined.
-//
-// jsonFileBytes contain all bytes of JSON file.
-//
-// zFileBytes contain all bytes of Z file.
-func (f *Fpdf) AddFontFromBytes(familyStr, styleStr string, jsonFileBytes, zFileBytes []byte) {
-	f.addFontFromBytes(fontFamilyEscape(familyStr), styleStr, jsonFileBytes, zFileBytes, nil)
-}
 
 // AddUTF8FontFromBytes  imports a TrueType font with utf-8 symbols from static
 // bytes within the executable and makes it available for use in the generated
@@ -176,51 +158,6 @@ func getFontKey(familyStr, styleStr string) string {
 	return familyStr + styleStr
 }
 
-// AddFontFromReader imports a TrueType, OpenType or Type1 font and makes it
-// available using a reader that satisifies the io.Reader interface. See
-// AddFont for details about familyStr and styleStr.
-func (f *Fpdf) AddFontFromReader(familyStr, styleStr string, r io.Reader) {
-	if f.err != nil {
-		return
-	}
-	// dbg("Adding family [%s], style [%s]", familyStr, styleStr)
-	familyStr = fontFamilyEscape(familyStr)
-	var ok bool
-	fontkey := getFontKey(familyStr, styleStr)
-	_, ok = f.fonts[fontkey]
-	if ok {
-		return
-	}
-	info := f.loadfont(r)
-	if f.err != nil {
-		return
-	}
-	if len(info.Diff) > 0 {
-		// Search existing encodings
-		n := -1
-		for j, str := range f.diffs {
-			if str == info.Diff {
-				n = j + 1
-				break
-			}
-		}
-		if n < 0 {
-			f.diffs = append(f.diffs, info.Diff)
-			n = len(f.diffs)
-		}
-		info.DiffN = n
-	}
-	// dbg("font [%s], type [%s]", info.File, info.Tp)
-	if len(info.File) > 0 {
-		// Embedded font
-		if info.Tp == "TrueType" {
-			f.fontFiles[info.File] = fontFileType{length1: int64(info.OriginalSize)}
-		} else {
-			f.fontFiles[info.File] = fontFileType{length1: int64(info.Size1), length2: int64(info.Size2)}
-		}
-	}
-	f.fonts[fontkey] = info
-}
 
 // GetFontDesc returns the font descriptor, which can be used for
 // example to find the baseline of a font. If familyStr is empty
@@ -397,12 +334,6 @@ func (f *Fpdf) SetFontLoader(loader FontLoader) {
 // empty string for regular style, "B" for bold, "I" for italic, or "BI" or
 // "IB" for bold and italic combined.
 //
-// fileStr specifies the base name with ".json" extension of the font
-// definition file to be added. The file will be loaded from the font directory
-// specified in the call to New() or SetFontLocation().
-func (f *Fpdf) AddFont(familyStr, styleStr, fileStr string) {
-	f.addFont(fontFamilyEscape(familyStr), styleStr, fileStr, false)
-}
 
 // AddUTF8Font imports a TrueType font with utf-8 symbols and makes it available.
 // It is necessary to generate a font definition file first with the makefont
@@ -425,111 +356,81 @@ func (f *Fpdf) AddFont(familyStr, styleStr, fileStr string) {
 // definition file to be added. The file will be loaded from the font directory
 // specified in the call to New() or SetFontLocation().
 func (f *Fpdf) AddUTF8Font(familyStr, styleStr, fileStr string) {
-	f.addFont(fontFamilyEscape(familyStr), styleStr, fileStr, true)
+	f.addFont(fontFamilyEscape(familyStr), styleStr, fileStr)
 }
 
-func (f *Fpdf) addFont(familyStr, styleStr, fileStr string, isUTF8 bool) {
+func (f *Fpdf) addFont(familyStr, styleStr, fileStr string) {
 	if fileStr == "" {
-		if isUTF8 {
-			fileStr = Convert(familyStr).Replace(" ", "").String() + Convert(styleStr).ToLower().String() + ".ttf"
-		} else {
-			fileStr = Convert(familyStr).Replace(" ", "").String() + Convert(styleStr).ToLower().String() + ".json"
-		}
+		fileStr = Convert(familyStr).Replace(" ", "").String() + Convert(styleStr).ToLower().String() + ".ttf"
 	}
-	if isUTF8 {
-		fontKey := getFontKey(familyStr, styleStr)
-		_, ok := f.fonts[fontKey]
-		if ok {
-			return
-		}
-		var originalSize int64
-		var err error
-		// If fileStr is already an absolute path, use it directly
-		// Otherwise, join it with the fonts path
-		if !filepath.IsAbs(fileStr) {
-			fileStr = path.Join(f.fontsPath, fileStr)
-		}
-		originalSize, err = f.fileSize(fileStr)
-		if err != nil {
-			f.SetError(err)
-			return
-		}
-		Type := "UTF8"
-		var utf8Bytes []byte
-		utf8Bytes, err = f.readFile(fileStr)
-		if err != nil {
-			f.SetError(err)
-			return
-		}
-		reader := fileReader{readerPosition: 0, array: utf8Bytes}
-		utf8File := newUTF8Font(&reader)
-		err = utf8File.parseFile()
-		if err != nil {
-			f.SetError(err)
-			return
-		}
+	fontKey := getFontKey(familyStr, styleStr)
+	_, ok := f.fonts[fontKey]
+	if ok {
+		return
+	}
+	var originalSize int64
+	var err error
+	// If fileStr is already an absolute path, use it directly
+	// Otherwise, join it with the fonts path
+	if !filepath.IsAbs(fileStr) {
+		fileStr = path.Join(f.fontsPath, fileStr)
+	}
+	originalSize, err = f.fileSize(fileStr)
+	if err != nil {
+		f.SetError(err)
+		return
+	}
+	Type := "UTF8"
+	var utf8Bytes []byte
+	utf8Bytes, err = f.readFile(fileStr)
+	if err != nil {
+		f.SetError(err)
+		return
+	}
+	reader := fileReader{readerPosition: 0, array: utf8Bytes}
+	utf8File := newUTF8Font(&reader)
+	err = utf8File.parseFile()
+	if err != nil {
+		f.SetError(err)
+		return
+	}
 
-		desc := FontDescType{
-			Ascent:       int(utf8File.Ascent),
-			Descent:      int(utf8File.Descent),
-			CapHeight:    utf8File.CapHeight,
-			Flags:        utf8File.Flags,
-			FontBBox:     utf8File.Bbox,
-			ItalicAngle:  utf8File.ItalicAngle,
-			StemV:        utf8File.StemV,
-			MissingWidth: round(utf8File.DefaultWidth),
-		}
+	desc := FontDescType{
+		Ascent:       int(utf8File.Ascent),
+		Descent:      int(utf8File.Descent),
+		CapHeight:    utf8File.CapHeight,
+		Flags:        utf8File.Flags,
+		FontBBox:     utf8File.Bbox,
+		ItalicAngle:  utf8File.ItalicAngle,
+		StemV:        utf8File.StemV,
+		MissingWidth: round(utf8File.DefaultWidth),
+	}
 
-		var sbarr map[int]int
-		if f.aliasNbPagesStr == "" {
-			sbarr = makeSubsetRange(57)
-		} else {
-			sbarr = makeSubsetRange(32)
-		}
-		def := fontDefType{
-			Tp:        Type,
-			Name:      fontKey,
-			Desc:      desc,
-			Up:        int(round(utf8File.UnderlinePosition)),
-			Ut:        round(utf8File.UnderlineThickness),
-			Cw:        utf8File.CharWidths,
-			usedRunes: sbarr,
-			File:      fileStr,
-			utf8File:  utf8File,
-		}
-		def.i, _ = generateFontID(def)
-		f.fonts[fontKey] = def
-		f.fontFiles[fontKey] = fontFileType{
-			length1:  originalSize,
-			fontType: "UTF8",
-		}
-		f.fontFiles[fileStr] = fontFileType{
-			fontType: "UTF8",
-		}
+	var sbarr map[int]int
+	if f.aliasNbPagesStr == "" {
+		sbarr = makeSubsetRange(57)
 	} else {
-		if f.fontLoader != nil {
-			reader, err := f.fontLoader.Open(fileStr)
-			if err == nil {
-				f.AddFontFromReader(familyStr, styleStr, reader)
-				if closer, ok := reader.(io.Closer); ok {
-					closer.Close()
-				}
-				return
-			}
-		}
-
-		// If fileStr is already an absolute path, use it directly
-		// Otherwise, join it with the fonts path
-		if !filepath.IsAbs(fileStr) {
-			fileStr = path.Join(f.fontsPath, fileStr)
-		}
-		data, err := f.readFile(fileStr)
-		if err != nil {
-			f.err = err
-			return
-		}
-
-		f.AddFontFromReader(familyStr, styleStr, bytes.NewReader(data))
+		sbarr = makeSubsetRange(32)
+	}
+	def := fontDefType{
+		Tp:        Type,
+		Name:      fontKey,
+		Desc:      desc,
+		Up:        int(round(utf8File.UnderlinePosition)),
+		Ut:        round(utf8File.UnderlineThickness),
+		Cw:        utf8File.CharWidths,
+		usedRunes: sbarr,
+		File:      fileStr,
+		utf8File:  utf8File,
+	}
+	def.i, _ = generateFontID(def)
+	f.fonts[fontKey] = def
+	f.fontFiles[fontKey] = fontFileType{
+		length1:  originalSize,
+		fontType: "UTF8",
+	}
+	f.fontFiles[fileStr] = fontFileType{
+		fontType: "UTF8",
 	}
 }
 
@@ -539,11 +440,6 @@ func (f *Fpdf) GetFontLocation() string {
 	return f.fontsPath
 }
 
-// SetFontLocation sets the location in the file system of the font and font
-// definition files.
-func (f *Fpdf) SetFontLocation(fontDirStr string) {
-	f.fontsPath = fontDirStr
-}
 
 func (f *Fpdf) loadFontFile(name string) ([]byte, error) {
 	if f.fontLoader != nil {

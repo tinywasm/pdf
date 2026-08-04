@@ -323,3 +323,10 @@ tinygo build -target arduino ./cmd/example
 - Implemented `ImageID` for type-safe image references, making images loaded immediately on `RegisterImage`.
 - Updated charts, tables, text elements, and tests to use `doc.getActiveFontName()`.
 - Updated all test deliverables to perform stat/size checks to prevent Go's test runner caching.
+
+### Update: Font System Simplification, AFM Elimination, and External Color/Chart Unification
+- Migrated typography identity and face derivation entirely to `github.com/tinywasm/font` v0.0.3, replacing `LoadTypeface` with `LoadDeclared(font.Declaration)`.
+- Completely removed legacy non-UTF8 Type1/AFM font lineage residual code (`MakeFont`, `AddFontFromBytes`, `AddFontFromReader`, `AddFont`, `SetFontLocation`, and the entire AFM parser `fpdf/font_afm.go`).
+- Removed native chart components (`chart.go`, `chart_bar.go`, `chart_line.go`, and `chart_pie.go`) to delegative package `github.com/tinywasm/chart`, keeping the PDF generation core lean and WebAssembly friendly.
+- Created `canvas.go` to export a robust, type-safe drawing and formatting surface `Canvas` interface on `Document`, permitting external packages to draw graphics securely.
+- Unified color management across the package using `github.com/tinywasm/color` v0.1.1, replacing the old parser with `color.Color` and standard `RGB()` / `RGBA()` decompositions.

@@ -3,18 +3,15 @@
 package main
 
 import (
+	"github.com/tinywasm/font"
 	"github.com/tinywasm/pdf"
 	"github.com/tinywasm/pdf/web/ui"
 )
 
 func main() {
 	// Cargar tipografía para el cliente Web (WASM)
-	tf, err := pdf.LoadTypeface(
-		"fonts/Roboto-Regular.ttf",
-		"fonts/Roboto-Bold.ttf",
-		"fonts/Roboto-Italic.ttf",
-		"fonts/Roboto-BoldItalic.ttf",
-	)
+	d := font.Declare("Roboto", "fonts/")
+	tf, err := pdf.LoadDeclared(d)
 	if err != nil {
 		panic("Error cargando tipografía Roboto: " + err.Error())
 	}
