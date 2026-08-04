@@ -11,14 +11,19 @@
                    |   github.com/tinywasm  |
                    |         (pdf)          |
                    +-----------+------------+
+                               ^
+                               | import (usa pdf.Canvas)
                                |
-                               | (Implements Canvas)
-                               v
                    +------------------------+
                    |   github.com/tinywasm  |
                    |        (chart)         |
                    +------------------------+
 ```
+
+La flecha va de `chart` hacia `pdf`, no al revés: `pdf` declara e implementa `Canvas`
+(`canvas.go`, con `var _ Canvas = (*Document)(nil)` como guardia de compilación) sin
+saber que `chart` existe. `chart` importa `pdf` y construye sus gráficos sobre
+`pdf.Canvas`. `pdf` nunca importa `chart` — de hacerlo, crearía un ciclo.
 
 ## Principios de Diseño
 

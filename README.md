@@ -1,15 +1,15 @@
-# TinyPDF
+# tinywasm/pdf
 <img src="docs/img/badges.svg">
 
 ## Overview
 
 This library is designed for web rendering with WebAssembly. It is optimized for TinyGo compatibility, with all standard library components that are not compatible with TinyGo being removed or replaced.
 
-The fork of go-pdf  https://github.com/jung-kurt/gofpdf
+The rendering engine (`fpdf/`) is adapted from [gofpdf](https://github.com/jung-kurt/gofpdf), not a fork kept in sync with upstream: the legacy Type1/AFM font lineage and `internal/` machinery were removed, and the public surface was rebuilt around a typed, WASM-safe API (`LoadDeclared`, `Canvas`, `color.Color`) — see `docs/ARCHITECTURE.md`.
 
 ## New Flow-First Layout API
 
-TinyPDF now features a declarative, flow-first API that prioritizes composition over absolute positioning.
+TwPDF now features a declarative, flow-first API that prioritizes composition over absolute positioning.
 
 ### Example
 

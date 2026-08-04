@@ -41,3 +41,4 @@ demo.pdf
 demo
 *.wasm
 .env
+contract_layout
