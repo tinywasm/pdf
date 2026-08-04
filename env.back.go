@@ -22,8 +22,13 @@ func (d *Document) writeFile(filePath string, content []byte) error {
 }
 
 // readFile lee un archivo del sistema de archivos usando os
-func (d *Document) readFile(filePath string) ([]byte, error) {
+func readFile(filePath string) ([]byte, error) {
 	return os.ReadFile(filePath)
+}
+
+// readFile lee un archivo del sistema de archivos usando os
+func (d *Document) readFile(filePath string) ([]byte, error) {
+	return readFile(filePath)
 }
 
 // fileSize obtiene el tamaño de un archivo usando os.Stat

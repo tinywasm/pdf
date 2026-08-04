@@ -47,7 +47,7 @@ func (d *Document) writeFile(filePath string, content []byte) error {
 }
 
 // readFile lee un archivo usando fetch (para cargar recursos estáticos como fuentes e imágenes)
-func (d *Document) readFile(filePath string) ([]byte, error) {
+func readFile(filePath string) ([]byte, error) {
 	ch := make(chan struct {
 		data []byte
 		err  error
@@ -76,6 +76,11 @@ func (d *Document) readFile(filePath string) ([]byte, error) {
 
 	res := <-ch
 	return res.data, res.err
+}
+
+// readFile lee un archivo usando fetch (para cargar recursos estáticos como fuentes e imágenes)
+func (d *Document) readFile(filePath string) ([]byte, error) {
+	return readFile(filePath)
 }
 
 // fileSize obtiene el tamaño de un archivo de localStorage

@@ -431,7 +431,6 @@ type Fpdf struct {
 	writeFile        func(filePath string, content []byte) error // function to write files, can be customized for WebAssembly
 	readFile         func(filePath string) ([]byte, error)       // function to read files, can be customized for WebAssembly
 	fileSize         func(filePath string) (int64, error)        // function to get file size, can be customized for WebAssembly
-	coreFonts        map[string]bool                             // array of core font names
 	fonts            map[string]fontDefType                      // array of used fonts
 	fontFiles        map[string]fontFileType                     // array of font files
 	diffs            []string                                    // array of encoding differences

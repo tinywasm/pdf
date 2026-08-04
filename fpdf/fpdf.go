@@ -123,14 +123,6 @@ func New(options ...any) (f *Fpdf) {
 	// Set fontsPath instance
 	f.fontsPath = f.rootDirectory.MakePath(string(f.fontsDirName))
 
-	// Core fonts
-	f.coreFonts = map[string]bool{
-		"courier":      true,
-		"helvetica":    true,
-		"times":        true,
-		"symbol":       true,
-		"zapfdingbats": true,
-	}
 	// Scale factor
 	switch f.unitType {
 	case POINT:

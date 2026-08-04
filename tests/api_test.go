@@ -1,13 +1,27 @@
 package pdf_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tinywasm/pdf"
 )
 
 func TestAPI_Basic(t *testing.T) {
-	doc := pdf.NewDocument()
+	const out = "test_api.pdf"
+	_ = os.Remove(out)
+
+	tf, err := pdf.LoadTypeface(
+		fontDir+"Roboto-Regular.ttf",
+		fontDir+"Roboto-Bold.ttf",
+		fontDir+"Roboto-Italic.ttf",
+		fontDir+"Roboto-BoldItalic.ttf",
+	)
+	if err != nil {
+		t.Fatalf("loading typeface: %v", err)
+	}
+
+	doc := pdf.NewDocument(tf)
 	doc.SetPageHeader().SetLeftText("Test Header")
 	doc.SetPageFooter().WithPageTotal("R")
 	doc.AddPage()
@@ -16,8 +30,16 @@ func TestAPI_Basic(t *testing.T) {
 	doc.SpaceBefore(10)
 	doc.AddText("Another paragraph.").Bold().AlignRight().Draw()
 
-	err := doc.WritePdf("test_api.pdf")
+	writeErr := doc.WritePdf(out)
+	if writeErr != nil {
+		t.Fatalf("WritePdf failed: %v", writeErr)
+	}
+
+	st, err := os.Stat(out)
 	if err != nil {
-		t.Errorf("WritePdf failed: %v", err)
+		t.Fatalf("stat %s: %v", out, err)
+	}
+	if st.Size() == 0 {
+		t.Fatalf("PDF %s is empty", out)
 	}
 }

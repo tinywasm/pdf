@@ -1,5 +1,9 @@
 package pdf
 
+import (
+	. "github.com/tinywasm/fmt"
+)
+
 // Element is the interface for all layout components.
 type Element interface {
 	draw(doc *Document, x, y, w float64) (height float64)
@@ -35,7 +39,7 @@ func (t *TextElement) Draw() *Document {
 		color = d.theme.Body
 	}
 	d.setTextColor(color)
-	d.internal.SetFont(d.fontFamily, style, size)
+	d.internal.SetFont(d.getActiveFontName(), style, size)
 
 	// Force X back to the left margin so flow text always uses the full
 	// content width, even if a previous primitive (e.g. a table) left the
@@ -122,7 +126,7 @@ func (t *TextElement) draw(doc *Document, x, y, w float64) float64 {
 	}
 
 	doc.setTextColor(color)
-	doc.internal.SetFont(doc.fontFamily, style, size)
+	doc.internal.SetFont(doc.getActiveFontName(), style, size)
 
 	// MultiCell wraps subsequent lines to the document's left margin, not
 	// to x. Temporarily move the left margin to x so wrapping happens
@@ -143,7 +147,7 @@ func (t *TextElement) draw(doc *Document, x, y, w float64) float64 {
 func (t *TextElement) measure(doc *Document, w float64) (float64, float64) {
 	style := t.getStyle()
 	size := t.getSize(doc)
-	doc.internal.SetFont(doc.fontFamily, style, size)
+	doc.internal.SetFont(doc.getActiveFontName(), style, size)
 
 	if w <= 0 {
 		// Infinite width measurement for auto-sizing
@@ -158,14 +162,14 @@ func (t *TextElement) measure(doc *Document, w float64) (float64, float64) {
 // Image element.
 type ImageElement struct {
 	doc    *Document // set by Document.AddImage (flow mode); nil for package-level pdf.Image
-	name   string
+	id     ImageID
 	width  float64
 	height float64
 	align  string // L, C, R
 }
 
-func Image(name string) *ImageElement {
-	return &ImageElement{name: name, align: "L"}
+func Image(id ImageID) *ImageElement {
+	return &ImageElement{id: id, align: "L"}
 }
 
 // Draw renders this image in flow mode. Requires the element to have been
@@ -214,7 +218,8 @@ func (i *ImageElement) draw(doc *Document, x, y, w float64) float64 {
 	imgW := i.width
 	imgH := i.height
 
-	info := doc.internal.GetImageInfo(i.name)
+	name := Sprintf("img_%d", int(i.id))
+	info := doc.internal.GetImageInfo(name)
 	if info != nil {
 		if imgW == 0 && imgH == 0 {
 			imgW = w // Fit to width by default if not specified?
@@ -243,14 +248,15 @@ func (i *ImageElement) draw(doc *Document, x, y, w float64) float64 {
 		posX = x + w - imgW
 	}
 
-	doc.drawImageAt(i.name, posX, y, imgW)
+	doc.drawImageAt(name, posX, y, imgW)
 	return imgH
 }
 
 func (i *ImageElement) measure(doc *Document, w float64) (float64, float64) {
 	imgW := i.width
 	imgH := i.height
-	info := doc.internal.GetImageInfo(i.name)
+	name := Sprintf("img_%d", int(i.id))
+	info := doc.internal.GetImageInfo(name)
 	if info != nil {
 		if imgW == 0 && imgH == 0 {
 			imgW = info.Width()

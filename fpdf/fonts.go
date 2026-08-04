@@ -295,34 +295,8 @@ func (f *Fpdf) SetFont(familyStr, styleStr string, size float64) {
 	fontKey := familyStr + styleStr
 	_, ok = f.fonts[fontKey]
 	if !ok {
-		// Test if one of the core fonts
-		if familyStr == "arial" {
-			familyStr = "helvetica"
-		}
-		_, ok = f.coreFonts[familyStr]
-		if ok {
-			if familyStr == "symbol" {
-				familyStr = "zapfdingbats"
-			}
-			if familyStr == "zapfdingbats" {
-				styleStr = ""
-			}
-			fontKey = familyStr + styleStr
-			_, ok = f.fonts[fontKey]
-			if !ok {
-				rdr := f.coreFontReader(familyStr, styleStr)
-				if f.err == nil {
-					defer rdr.Close()
-					f.AddFontFromReader(familyStr, styleStr, rdr)
-				}
-				if f.err != nil {
-					return
-				}
-			}
-		} else {
-			f.err = Errf("undefined font: %s %s", familyStr, styleStr)
-			return
-		}
+		f.err = Errf("undefined font: %s %s", familyStr, styleStr)
+		return
 	}
 	// Select it
 	f.fontFamily = familyStr

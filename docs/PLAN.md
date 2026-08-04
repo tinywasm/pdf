@@ -1,8 +1,9 @@
 ---
 PLAN: "feat: Cerrar el harness de tipografía"
 TAG: v0.1.0
-STATUS: running
+STATUS: review
 SESSION: 10102235131514896367
+PR: https://github.com/tinywasm/pdf/pull/19
 ---
 
 ## Antes de escribir código: lee [CONSTRUCTION_HARNESS.md](CONSTRUCTION_HARNESS.md)

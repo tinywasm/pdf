@@ -8,12 +8,45 @@ import (
 	"github.com/tinywasm/pdf/fpdf"
 )
 
-// fontEntry holds a font registration request.
-type fontEntry struct {
-	family    string
-	style     string // "", "B", "I", "BI"
-	path      string
-	allStyles bool // when true, register the file for all four styles
+type Typeface struct {
+	regularData    []byte
+	boldData       []byte
+	italicData     []byte
+	boldItalicData []byte
+}
+
+type TypefaceID int
+
+type ImageID int
+
+type imageEntry struct {
+	name string
+	path string
+}
+
+func LoadTypeface(regular, bold, italic, boldItalic string) (Typeface, error) {
+	reg, err := readFile(regular)
+	if err != nil {
+		return Typeface{}, err
+	}
+	bld, err := readFile(bold)
+	if err != nil {
+		return Typeface{}, err
+	}
+	it, err := readFile(italic)
+	if err != nil {
+		return Typeface{}, err
+	}
+	bi, err := readFile(boldItalic)
+	if err != nil {
+		return Typeface{}, err
+	}
+	return Typeface{
+		regularData:    reg,
+		boldData:       bld,
+		italicData:     it,
+		boldItalicData: bi,
+	}, nil
 }
 
 // Document wraps the internal fpdf.Fpdf to provide a fluent API.
@@ -22,16 +55,13 @@ type Document struct {
 	logger   func(message ...any)
 
 	// Resource registries
-	fonts  []fontEntry
-	images []KeyValue // name -> path
+	typefaces  []Typeface
+	activeFont TypefaceID
+	images     []imageEntry
 
-	fontFamily string
-	theme      Theme
-	err        error
+	theme Theme
+	err   error
 }
-
-// DefaultFontPath is the default path to the Arial UTF-8 font.
-const DefaultFontPath = "fonts/Arial.ttf"
 
 type Option func(*Document)
 
@@ -44,8 +74,6 @@ func WithLogger(fn func(...any)) Option {
 func WithPageSize(w, h float64, unit string) Option {
 	return func(d *Document) {
 		// unit is ignored for now as fpdf is initialized with mm by default
-		// but we could recreate internal if needed.
-		// For now let's assume mm.
 	}
 }
 
@@ -56,20 +84,12 @@ func WithMargins(left, top, right, bottom float64) Option {
 	}
 }
 
-func WithDefaultFont(family, path string) Option {
-	return func(d *Document) {
-		d.fontFamily = family
-		// We can't load it here easily because it might need d.readFile
-		// which is initialized after options? No, it's initialized in initIO.
-	}
-}
-
 // NewDocument creates a new Document instance with UTF-8 support.
-func NewDocument(opts ...Option) *Document {
+func NewDocument(t Typeface, opts ...Option) *Document {
 	d := &Document{
-		fonts:      []fontEntry{},
-		images:     []KeyValue{},
-		fontFamily: "Arial",
+		typefaces:  []Typeface{t},
+		activeFont: TypefaceID(0),
+		images:     []imageEntry{},
 		theme:      DefaultTheme,
 	}
 	d.initIO() // initializes logger + IO depending on build tag
@@ -81,21 +101,46 @@ func NewDocument(opts ...Option) *Document {
 	d.internal.SetMargins(20, 20, 20)
 	d.internal.SetAutoPageBreak(true, 20)
 
+	// Register the primary typeface in fpdf as font_0 and set it as active
+	d.registerTypefaceInFpdf(TypefaceID(0), t)
+
 	for _, opt := range opts {
 		opt(d)
 	}
 
-	d.loadDefaultFont()
 	return d
 }
 
-// loadDefaultFont loads Arial as UTF-8 font so the default "Arial" supports unicode.
-func (d *Document) loadDefaultFont() {
-	data, err := d.readFile(DefaultFontPath)
-	if err != nil {
-		return // fallback to built-in Arial (Latin-1 only)
+func (d *Document) AddTypeface(t Typeface) TypefaceID {
+	id := TypefaceID(len(d.typefaces))
+	d.typefaces = append(d.typefaces, t)
+	d.registerTypefaceInFpdf(id, t)
+	return id
+}
+
+func (d *Document) Use(id TypefaceID) *Document {
+	if int(id) < 0 || int(id) >= len(d.typefaces) {
+		return d
 	}
-	d.addUTF8FontAllStyles(d.fontFamily, data)
+	d.activeFont = id
+	return d
+}
+
+func (d *Document) registerTypefaceInFpdf(id TypefaceID, t Typeface) {
+	name := Sprintf("font_%d", int(id))
+	d.internal.AddUTF8FontFromBytes(name, "", t.regularData)
+	d.internal.AddUTF8FontFromBytes(name, "B", t.boldData)
+	d.internal.AddUTF8FontFromBytes(name, "I", t.italicData)
+	d.internal.AddUTF8FontFromBytes(name, "BI", t.boldItalicData)
+}
+
+func (d *Document) getActiveFontName() string {
+	return Sprintf("font_%d", int(d.activeFont))
+}
+
+func (d *Document) SetSize(pt float64) *Document {
+	d.internal.SetFontSize(pt)
+	return d
 }
 
 // SetTheme sets the document theme. Missing numeric fields (Sizes, Spacing)
@@ -127,9 +172,6 @@ func (d *Document) SetTheme(theme Theme) *Document {
 		theme.Spacing.Page = DefaultTheme.Spacing.Page
 	}
 	d.theme = theme
-	if theme.FontFamily != "" {
-		d.fontFamily = theme.FontFamily
-	}
 	if theme.Page.Width > 0 && theme.Page.Height > 0 {
 		d.internal.SetPageSizeMM(theme.Page.Width, theme.Page.Height)
 	}
@@ -152,19 +194,6 @@ func (d *Document) addError(err error) {
 	}
 }
 
-// SetDefaultFont sets the default font family for the document.
-func (d *Document) SetDefaultFont(family string) *Document {
-	d.fontFamily = family
-	return d
-}
-
-// addUTF8FontAllStyles registers a TTF font for all styles (regular, bold, italic, bold-italic).
-func (d *Document) addUTF8FontAllStyles(family string, data []byte) {
-	for _, style := range []string{"", "B", "I", "BI"} {
-		d.internal.AddUTF8FontFromBytes(family, style, data)
-	}
-}
-
 // SetLog sets the logger function.
 func (d *Document) SetLog(fn func(...any)) *Document {
 	d.logger = fn
@@ -178,69 +207,26 @@ func (d *Document) Log(message ...any) {
 	}
 }
 
-// kvGet retrieves a value from a KeyValue slice by key.
-// Note: This helper is currently available for future use in resource lookups.
-func kvGet(kv []KeyValue, key string) (string, bool) {
-	for i := range kv {
-		if kv[i].Key == key {
-			return kv[i].Value, true
-		}
-	}
-	return "", false
-}
-
-// RegisterFont registers a TTF font for all styles (regular, bold, italic, bold-italic).
-func (d *Document) RegisterFont(family, path string) *Document {
-	d.fonts = append(d.fonts, fontEntry{family: family, path: path, allStyles: true})
-	return d
-}
-
-// RegisterFontStyle registers a TTF font for a specific style ("", "B", "I", "BI").
-func (d *Document) RegisterFontStyle(family, style, path string) *Document {
-	d.fonts = append(d.fonts, fontEntry{family: family, style: style, path: path})
-	return d
-}
-
-// RegisterImage registers an image to be loaded.
-func (d *Document) RegisterImage(name, path string) *Document {
-	d.images = append(d.images, KeyValue{Key: name, Value: path})
-	return d
-}
-
-// Load loads all registered resources.
-func (d *Document) Load(cb func(error)) {
-	for i := range d.fonts {
-		fe := d.fonts[i]
-		data, err := d.readFile(fe.path)
-		if err != nil {
-			cb(err)
-			return
-		}
-		if fe.allStyles {
-			d.addUTF8FontAllStyles(fe.family, data)
-		} else {
-			d.internal.AddUTF8FontFromBytes(fe.family, fe.style, data)
-		}
+// RegisterImage registers an image to be loaded immediately.
+func (d *Document) RegisterImage(path string) (ImageID, error) {
+	data, err := d.readFile(path)
+	if err != nil {
+		return 0, err
 	}
 
-	for i := range d.images {
-		name, path := d.images[i].Key, d.images[i].Value
-		data, err := d.readFile(path)
-		if err != nil {
-			cb(err)
-			return
-		}
-
-		ext := ""
-		if idx := LastIndex(path, "."); idx != -1 {
-			ext = path[idx+1:]
-		}
-
-		opt := fpdf.ImageOptions{ImageType: ext, ReadDpi: true}
-		d.internal.RegisterImageOptionsReader(name, opt, bytes.NewReader(data))
+	ext := ""
+	if idx := LastIndex(path, "."); idx != -1 {
+		ext = path[idx+1:]
 	}
 
-	cb(nil)
+	id := len(d.images)
+	name := Sprintf("img_%d", id)
+
+	opt := fpdf.ImageOptions{ImageType: ext, ReadDpi: true}
+	d.internal.RegisterImageOptionsReader(name, opt, bytes.NewReader(data))
+
+	d.images = append(d.images, imageEntry{name: name, path: path})
+	return ImageID(id), nil
 }
 
 // Draw is a placeholder for consistency, though currently operations draw immediately.
@@ -282,7 +268,7 @@ func (d *Document) AddText(text string) *TextElement {
 // AddHeader1 adds a level 1 header.
 func (d *Document) AddHeader1(text string) *Document {
 	d.setTextColor(d.theme.Accent)
-	d.internal.SetFont(d.fontFamily, "B", d.theme.Sizes.H1)
+	d.internal.SetFont(d.getActiveFontName(), "B", d.theme.Sizes.H1)
 	d.internal.CellFormat(0, d.theme.Sizes.H1/2, text, "", 1, "L", false, 0, "")
 	d.setTextColor(d.theme.Body)
 	d.internal.Ln(d.theme.Spacing.Section)
@@ -292,7 +278,7 @@ func (d *Document) AddHeader1(text string) *Document {
 // AddHeader2 adds a level 2 header.
 func (d *Document) AddHeader2(text string) *Document {
 	d.setTextColor(d.theme.Accent)
-	d.internal.SetFont(d.fontFamily, "B", d.theme.Sizes.H2)
+	d.internal.SetFont(d.getActiveFontName(), "B", d.theme.Sizes.H2)
 	d.internal.CellFormat(0, d.theme.Sizes.H2/2, text, "", 1, "L", false, 0, "")
 	d.setTextColor(d.theme.Body)
 	d.internal.Ln(d.theme.Spacing.Section / 2)
@@ -302,7 +288,7 @@ func (d *Document) AddHeader2(text string) *Document {
 // AddHeader3 adds a level 3 header.
 func (d *Document) AddHeader3(text string) *Document {
 	d.setTextColor(d.theme.Accent)
-	d.internal.SetFont(d.fontFamily, "B", d.theme.Sizes.H3)
+	d.internal.SetFont(d.getActiveFontName(), "B", d.theme.Sizes.H3)
 	d.internal.CellFormat(0, d.theme.Sizes.H3/2, text, "", 1, "L", false, 0, "")
 	d.setTextColor(d.theme.Body)
 	d.internal.Ln(d.theme.Spacing.Section / 4)
@@ -356,9 +342,9 @@ func (d *Document) drawLineH(x, y, width float64, color Color, thickness float64
 	d.internal.SetLineWidth(0.2)
 }
 
-// AddImage adds an image by name (must be registered/loaded) in flow mode.
-func (d *Document) AddImage(name string) *ImageElement {
-	return &ImageElement{doc: d, name: name, align: "L"}
+// AddImage adds an image by ID in flow mode.
+func (d *Document) AddImage(id ImageID) *ImageElement {
+	return &ImageElement{doc: d, id: id, align: "L"}
 }
 
 func (d *Document) drawImageAt(name string, x, y, width float64) {
@@ -407,18 +393,18 @@ func (d *Document) setTextColor(color Color) {
 
 func (d *Document) drawTextAt(x, y float64, text, style string, size float64) {
 	d.internal.SetXY(x, y)
-	d.internal.SetFont(d.fontFamily, style, size)
+	d.internal.SetFont(d.getActiveFontName(), style, size)
 	d.internal.Cell(0, size/2.8, text)
 }
 
 func (d *Document) cellAt(x, y, w, h float64, text, style string, size float64, align string) {
 	d.internal.SetXY(x, y)
-	d.internal.SetFont(d.fontFamily, style, size)
+	d.internal.SetFont(d.getActiveFontName(), style, size)
 	d.internal.CellFormat(w, h, text, "", 0, align, false, 0, "")
 }
 
 func (d *Document) measureText(text, style string, size float64) (width, height float64) {
-	d.internal.SetFont(d.fontFamily, style, size)
+	d.internal.SetFont(d.getActiveFontName(), style, size)
 	return d.internal.GetStringWidth(text), size / 2.8
 }
 
@@ -432,17 +418,13 @@ type PageHeader struct {
 
 func (d *Document) SetPageHeader() *PageHeader {
 	ph := &PageHeader{doc: d}
-	// Register the callback immediately, but it captures the struct so updates will reflect
 	d.internal.SetHeaderFunc(func() {
 		d.internal.SetY(10) // Standard header position
-		d.internal.SetFont(d.fontFamily, "I", 8)
+		d.internal.SetFont(d.getActiveFontName(), "I", 8)
 		if ph.leftText != "" {
 			d.internal.Cell(0, 10, ph.leftText)
 		}
 		if ph.rightText != "" {
-			// Align right
-			// Calculate width? Or use CellFormat with align R?
-			// Cell(0) goes to right margin.
 			d.internal.CellFormat(0, 10, ph.rightText, "", 0, "R", false, 0, "")
 		}
 		d.internal.Ln(20) // Space after header
@@ -471,7 +453,7 @@ func (d *Document) SetPageFooter() *PageFooter {
 	pf := &PageFooter{doc: d}
 	d.internal.SetFooterFunc(func() {
 		d.internal.SetY(-15) // Standard footer position
-		d.internal.SetFont(d.fontFamily, "I", 8)
+		d.internal.SetFont(d.getActiveFontName(), "I", 8)
 
 		if pf.leftText != "" {
 			d.internal.SetTextColor(130, 130, 130)
@@ -509,11 +491,6 @@ func (pf *PageFooter) WithPageTotal(align string) *PageFooter {
 	pf.pageTotal = true
 	pf.doc.internal.AliasNbPages("")
 	return pf
-}
-
-func (d *Document) SetFont(family string, size float64) *Document {
-	d.internal.SetFont(family, "", size)
-	return d
 }
 
 // --- Styles ---
