@@ -3,16 +3,16 @@ module webtyp.com/pdf
 go 1.25.2
 
 require (
-	webtyp.com/fetch v0.1.24
-	webtyp.com/fmt v0.25.7
-	webtyp.com/json v0.5.17
-	webtyp.com/time v0.5.4
+	webtyp.com/fetch v0.1.28
+	webtyp.com/fmt v1.0.0
+	webtyp.com/json v0.5.25
+	webtyp.com/time v0.5.5
 )
 
-require webtyp.com/unixid v0.2.23
+require webtyp.com/unixid v0.2.28
 
 require (
-	webtyp.com/color v0.1.1
-	webtyp.com/font v0.0.4
-	webtyp.com/model v0.1.7
+	webtyp.com/color v0.1.2
+	webtyp.com/font v0.0.5
+	webtyp.com/model v0.1.8
 )
