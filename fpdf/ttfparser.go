@@ -6,7 +6,7 @@ import (
 	"io"
 	"regexp"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // TtfType contains metrics of a TrueType font.

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tinywasm/font"
-	"github.com/tinywasm/pdf"
+	"webtyp.com/font"
+	"webtyp.com/pdf"
 )
 
 // fontDir is relative to this test's working directory: readFile() is a plain

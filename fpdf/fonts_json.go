@@ -1,7 +1,7 @@
 package fpdf
 
 import (
-	"github.com/tinywasm/json"
+	"webtyp.com/json"
 )
 
 func unmarshalFontDef(data []byte, def *fontDefType) error {

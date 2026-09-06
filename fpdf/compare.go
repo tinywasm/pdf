@@ -6,7 +6,7 @@ import (
 	"os"
 	"sort"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 type sortType struct {

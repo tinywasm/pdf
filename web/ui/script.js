@@ -1,6 +1,6 @@
-// TinyWasm JavaScript
+// WebTyp JavaScript
 
-console.log('TinyWasm initialized');
+console.log('WebTyp initialized');
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded');

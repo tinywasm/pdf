@@ -3,7 +3,7 @@ package pdf
 import (
 	"testing"
 
-	"github.com/tinywasm/fmt"
+	"webtyp.com/fmt"
 )
 
 // Test para verificar el problema con pdfVersion.String()

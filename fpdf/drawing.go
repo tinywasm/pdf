@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"math"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // GetXY returns the abscissa and ordinate of the current position.

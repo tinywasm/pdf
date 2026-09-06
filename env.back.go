@@ -4,7 +4,7 @@
 package pdf
 
 import (
-	"github.com/tinywasm/fmt"
+	"webtyp.com/fmt"
 	"os"
 )
 

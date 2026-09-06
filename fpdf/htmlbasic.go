@@ -3,7 +3,7 @@ package fpdf
 import (
 	"regexp"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // HTMLBasicSegmentType defines a segment of literal text in which the current

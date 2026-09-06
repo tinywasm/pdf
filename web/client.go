@@ -3,9 +3,9 @@
 package main
 
 import (
-	"github.com/tinywasm/font"
-	"github.com/tinywasm/pdf"
-	"github.com/tinywasm/pdf/web/ui"
+	"webtyp.com/font"
+	"webtyp.com/pdf"
+	"webtyp.com/pdf/web/ui"
 )
 
 func main() {

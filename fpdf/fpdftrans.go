@@ -3,7 +3,7 @@ package fpdf
 import (
 	"math"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // Routines in this file are translated from the work of Moritz Wagner and

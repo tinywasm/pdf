@@ -9,10 +9,10 @@ TAG: v0.1.2
 | # | Principio | Cómo se aplica aquí |
 |---|---|---|
 | 6 | Fail at compile time, not runtime | Y si el fallo es inevitable en runtime, que **sea** un fallo: no un documento mal compuesto. |
-| 9 | Lego pieces, never forks | `LoadDeclared` está parcheando la derivación de `tinywasm/font` con nombres alternativos. Eso es un fork con nombre amable. |
+| 9 | Lego pieces, never forks | `LoadDeclared` está parcheando la derivación de `webtyp/font` con nombres alternativos. Eso es un fork con nombre amable. |
 | 4 | One way to do each thing | Una cara, un archivo, un nombre. |
 
-**Prerrequisito: `tinywasm/font` v0.1.0 publicado** (`font/docs/PLAN.md`), donde
+**Prerrequisito: `webtyp/font` v0.1.0 publicado** (`font/docs/PLAN.md`), donde
 `Face(Regular)` pasa a devolver `Roboto-Regular`. Sin eso, borrar el fallback de la línea
 41 rompe la carga.
 
@@ -63,7 +63,7 @@ inclinando la recta — que es justo lo que la tipografía real evita.
 2. **El error nombra el archivo.** `readFile` devuelve el error del sistema; envolverlo
    con la ruta completa que se intentó y la cara que faltaba, para que el mensaje diga qué
    archivo poner y dónde. Es la única pista que el dev va a tener.
-3. **`go.mod`**: `github.com/tinywasm/font` a v0.1.0.
+3. **`go.mod`**: `webtyp.com/font` a v0.1.0.
 4. **`docs/SPECS.md:6`**: la línea de «automatic style fallbacks» se sustituye por la
    regla nueva — las cuatro caras son obligatorias y su ausencia es un error que las
    nombra.

@@ -6,7 +6,7 @@ import (
 	"math"
 	"sort"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // flags

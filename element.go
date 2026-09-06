@@ -1,8 +1,8 @@
 package pdf
 
 import (
-	"github.com/tinywasm/color"
-	. "github.com/tinywasm/fmt"
+	"webtyp.com/color"
+	. "webtyp.com/fmt"
 )
 
 // Element is the interface for all layout components.

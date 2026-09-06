@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	fpdf "github.com/tinywasm/pdf/fpdf"
+	fpdf "webtyp.com/pdf/fpdf"
 )
 
 // httpimgPdf is a partial interface that only implements the functions we need

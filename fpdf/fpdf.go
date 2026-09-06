@@ -7,7 +7,7 @@ import (
 	"io"
 	"math"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 var gl struct {

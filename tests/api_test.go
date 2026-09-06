@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tinywasm/font"
-	"github.com/tinywasm/pdf"
+	"webtyp.com/font"
+	"webtyp.com/pdf"
 )
 
 func TestAPI_Basic(t *testing.T) {

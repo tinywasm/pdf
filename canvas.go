@@ -1,11 +1,11 @@
 package pdf
 
 import (
-	"github.com/tinywasm/color"
+	"webtyp.com/color"
 )
 
 // Canvas defines the drawing surface interface used by external packages
-// (such as tinywasm/chart) to render graphics on the PDF document.
+// (such as webtyp/chart) to render graphics on the PDF document.
 type Canvas interface {
 	GetX() float64
 	GetY() float64

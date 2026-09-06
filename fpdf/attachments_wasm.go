@@ -3,7 +3,7 @@
 package fpdf
 
 import (
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 type Attachment struct {

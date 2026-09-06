@@ -1,7 +1,7 @@
 package pdf
 
 import (
-	"github.com/tinywasm/color"
+	"webtyp.com/color"
 )
 
 type Theme struct {

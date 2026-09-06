@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 

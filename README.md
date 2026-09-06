@@ -1,4 +1,4 @@
-# tinywasm/pdf
+# webtyp/pdf
 <img src="docs/img/badges.svg">
 
 ## Overview
@@ -15,8 +15,8 @@ TwPDF now features a declarative, flow-first API that prioritizes composition ov
 
 ```go
 import (
-	"github.com/tinywasm/font"
-	"github.com/tinywasm/pdf"
+	"webtyp.com/font"
+	"webtyp.com/pdf"
 )
 
 // Declare the font family and path

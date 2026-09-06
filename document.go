@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/tinywasm/color"
-	. "github.com/tinywasm/fmt"
-	"github.com/tinywasm/font"
-	"github.com/tinywasm/pdf/fpdf"
+	"webtyp.com/color"
+	. "webtyp.com/fmt"
+	"webtyp.com/font"
+	"webtyp.com/pdf/fpdf"
 )
 
 type Typeface struct {

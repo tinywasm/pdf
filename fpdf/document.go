@@ -5,7 +5,7 @@ import (
 	"io"
 	"sort"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // PageSize returns the width and height of the specified page in the units

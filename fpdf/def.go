@@ -1,6 +1,6 @@
 package fpdf
 
-import "github.com/tinywasm/model"
+import "webtyp.com/model"
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"math"
 	"path"
 
-	"github.com/tinywasm/fmt"
+	"webtyp.com/fmt"
 )
 
 // Version of FPDF from which this package is derived

@@ -3,7 +3,7 @@ package fpdf
 import (
 	"encoding/xml"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // SVGBasicSegmentType describes a single curve or position segment

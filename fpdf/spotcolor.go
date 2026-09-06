@@ -1,7 +1,7 @@
 package fpdf
 
 import (
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 func byteBound(v byte) byte {

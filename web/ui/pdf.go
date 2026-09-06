@@ -4,7 +4,7 @@
 package ui
 
 import (
-	"github.com/tinywasm/fmt"
+	"webtyp.com/fmt"
 	"syscall/js"
 )
 

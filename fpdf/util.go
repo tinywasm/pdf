@@ -3,7 +3,7 @@ package fpdf
 import (
 	"math"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 func must(n int, err error) {

@@ -1,7 +1,7 @@
 package fpdf
 
 import (
-	"github.com/tinywasm/time"
+	"webtyp.com/time"
 )
 
 // SetDefaultCreationDate sets the default value of the document creation date

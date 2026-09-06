@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tinywasm/fmt"
+	"webtyp.com/fmt"
 
-	fpdf "github.com/tinywasm/pdf/fpdf"
+	fpdf "webtyp.com/pdf/fpdf"
 )
 
 var rootTestDir fpdf.RootDirectoryType

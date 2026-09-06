@@ -5,9 +5,9 @@ package pdf
 
 import (
 	"encoding/base64"
-	"github.com/tinywasm/fetch"
-	. "github.com/tinywasm/fmt"
-	"github.com/tinywasm/fmt/lang"
+	"webtyp.com/fetch"
+	. "webtyp.com/fmt"
+	"webtyp.com/fmt/lang"
 	"syscall/js"
 )
 

@@ -1,7 +1,7 @@
 package fpdf
 
 import (
-	"github.com/tinywasm/unixid"
+	"webtyp.com/unixid"
 )
 
 var uid, _ = unixid.NewUnixID()

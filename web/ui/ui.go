@@ -6,7 +6,7 @@ package ui
 import (
 	"syscall/js"
 
-	"github.com/tinywasm/pdf"
+	"webtyp.com/pdf"
 )
 
 var (

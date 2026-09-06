@@ -3,7 +3,7 @@ package fpdf
 import (
 	"math"
 
-	. "github.com/tinywasm/fmt"
+	. "webtyp.com/fmt"
 )
 
 // RGBType holds fields for red, green and blue color components (0..255)

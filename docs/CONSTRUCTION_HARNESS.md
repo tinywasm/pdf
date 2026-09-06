@@ -1,6 +1,6 @@
 # The construction harness — typed, explicit, hard to get wrong
 
-> The ecosystem's guiding principle. It applies to **every** TinyWasm Framework.
+> The ecosystem's guiding principle. It applies to **every** WebTyp Framework.
 > Pass it as context to an agent/LLM when designing or refactoring an API, so the result is
 > aligned with how this ecosystem is built.
 
@@ -35,7 +35,7 @@ func (b *Builder) Child(c ...*Node) *Builder
 func (b *Builder) Set(kv ...fmt.KeyValue) *Builder   // reuses types already declared in fmt
 ```
 
-This is the house pattern. `tinywasm/json` already writes this way — one method per primitive
+This is the house pattern. `webtyp/json` already writes this way — one method per primitive
 (`String`, `Int`, `Bool`, `Object`, `Array`), with `any` **only** at the I/O edge, never in the
 data. And it **reuses types that already exist** (`fmt.KeyValue`, `*Element`) instead of
 inventing new ones.
@@ -99,7 +99,7 @@ implementation (a different `Router`, a fake `Caller` in tests) never touches th
 Every API in the ecosystem must satisfy them.
 
 1. **Typed over `any`.** No generic holes (`func(...any)`, `interface{}`) in the API — methods
-   typed by intent, like the `tinywasm/json` writer. `any` is allowed only at the I/O edge,
+   typed by intent, like the `webtyp/json` writer. `any` is allowed only at the I/O edge,
    never in the data. **Reuse the types that already exist** (`fmt.KeyValue`, …) instead of
    duplicating them.
 2. **Explicit over implicit.** The name declares the intent. Reading the call must be enough to
@@ -146,7 +146,7 @@ awkward to write, the API is awkward to use, and you have found the defect befor
 When reviewing or rewriting a library, hunt for and fix:
 
 - **Untyped holes.** Every `any`/`interface{}`/`...any` in the public API → replace with methods
-  typed by intent (like `tinywasm/json`), reusing types already declared in `fmt`.
+  typed by intent (like `webtyp/json`), reusing types already declared in `fmt`.
 - **Invariants checked at runtime.** Things validated today with an `if` plus an error or a
   panic → can they move into the type system so that wrong code does not compile?
 - **Things you "have to remember".** Any mandatory step the author must remember to call (call
